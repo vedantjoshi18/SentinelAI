@@ -1,0 +1,30 @@
+{
+  "name": "sentinelai-monorepo",
+  "version": "1.0.0",
+  "description": "SentinelAI: AI-Powered Application Security & Intrusion Detection Platform",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:server": "npm --prefix server run dev",
+    "dev:client": "npm --prefix client dev",
+    "start:server": "npm --prefix server start",
+    "start:client": "npm --prefix client dev",
+    "test:server": "npm --prefix server test",
+    "test:client": "npm --prefix client test",
+    "test": "npm --prefix server test"
+  },
+  "keywords": [
+    "application-security",
+    "intrusion-detection",
+    "waf",
+    "machine-learning",
+    "fastapi",
+    "express",
+    "react"
+  ],
+  "author": "SentinelAI Team",
+  "license": "MIT"
+}

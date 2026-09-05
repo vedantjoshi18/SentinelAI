@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: sentinelai-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: sentinelai
+
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    container_name: sentinelai-ai
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - AI_PORT=8000
+      - AI_HOST=0.0.0.0
+      - AI_MODEL_VERSION=attack-classifier-v1
+      - ANOMALY_MODEL_VERSION=behaviour-model-v1
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: sentinelai-server
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongodb:27017/sentinelai
+      - AI_SERVICE_URL=http://ai-service:8000
+      - JWT_SECRET=sentinelai_dev_secret_key_min_32_chars_long_example!
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - mongodb
+      - ai-service
+
+volumes:
+  mongo-data:
