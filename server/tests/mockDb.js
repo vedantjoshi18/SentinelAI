@@ -1,13 +1,15 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const User = require('../src/models/User');
+const SecurityEvent = require('../src/models/SecurityEvent');
 
 let inMemoryUsers = [];
+let inMemoryEvents = [];
 
 function createUserDoc(data) {
   const doc = {
-    _id: data._id || new mongoose.Types.ObjectId().toString(),
+    _id: data._id ? data._id.toString() : new mongoose.Types.ObjectId().toString(),
     name: data.name,
-    email: data.email.toLowerCase().trim(),
+    email: data.email ? data.email.toLowerCase().trim() : '',
     passwordHash: data.passwordHash,
     role: data.role || 'USER',
     status: data.status || 'active',
@@ -54,7 +56,55 @@ function createUserDoc(data) {
   return doc;
 }
 
+function createEventDoc(data) {
+  const doc = {
+    _id: data._id ? data._id.toString() : new mongoose.Types.ObjectId().toString(),
+    timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
+    ip: data.ip || '127.0.0.1',
+    method: data.method || 'GET',
+    path: data.path || '/',
+    threatType: data.threatType || 'NORMAL',
+    riskScore: typeof data.riskScore === 'number' ? data.riskScore : 0,
+    severity: data.severity || 'LOW',
+    action: data.action || 'ALLOW',
+    ruleMatches: Array.isArray(data.ruleMatches) ? [...data.ruleMatches] : [],
+    ruleSeverity: data.ruleSeverity || 'NONE',
+    aiConfidence: typeof data.aiConfidence === 'number' ? data.aiConfidence : 0,
+    aiModelVersion: data.aiModelVersion || 'none',
+    factors: Array.isArray(data.factors) ? [...data.factors] : [],
+    breakdown: data.breakdown || {},
+    telemetry: data.telemetry || {},
+    userAgent: data.userAgent || '',
+    userId: data.userId || null,
+    payloadSnippet: data.payloadSnippet || '',
+    resolved: Boolean(data.resolved),
+    notes: data.notes || '',
+    createdAt: data.createdAt || new Date(),
+    updatedAt: data.updatedAt || new Date(),
+  };
+
+  doc.toJSON = function () {
+    return { ...this };
+  };
+  doc.toObject = doc.toJSON;
+
+  return doc;
+}
+
+function matchesFilter(event, filter = {}) {
+  for (const [key, val] of Object.entries(filter)) {
+    if (key === 'timestamp' && typeof val === 'object' && val !== null) {
+      if (val.$gte && event.timestamp < new Date(val.$gte)) return false;
+      if (val.$lte && event.timestamp > new Date(val.$lte)) return false;
+    } else if (event[key] !== val) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function setupMockDb() {
+  // User Mocking
   User.findOne = function (query) {
     const email = query.email ? query.email.toLowerCase().trim() : null;
     const found = inMemoryUsers.find((u) => u.email === email);
@@ -62,12 +112,10 @@ function setupMockDb() {
     const chainable = {
       select: function (fields) {
         if (!found) return Promise.resolve(null);
-        // If passwordHash requested via +passwordHash, keep it on doc
         return Promise.resolve(found);
       },
       then: function (resolve, reject) {
         if (!found) return Promise.resolve(null).then(resolve, reject);
-        // Clone without passwordHash by default
         const safeDoc = createUserDoc(found);
         delete safeDoc.passwordHash;
         return Promise.resolve(safeDoc).then(resolve, reject);
@@ -78,7 +126,7 @@ function setupMockDb() {
   };
 
   User.findById = function (id) {
-    const targetId = id.toString();
+    const targetId = id ? id.toString() : '';
     const found = inMemoryUsers.find((u) => u._id.toString() === targetId);
     if (!found) return Promise.resolve(null);
     return Promise.resolve(found);
@@ -89,14 +137,82 @@ function setupMockDb() {
     inMemoryUsers.push(doc);
     return doc;
   };
+
+  // SecurityEvent Mocking
+  SecurityEvent.create = async function (data) {
+    const doc = createEventDoc(data);
+    inMemoryEvents.push(doc);
+    return doc;
+  };
+
+  SecurityEvent.findById = function (id) {
+    const targetId = id ? id.toString() : '';
+    const found = inMemoryEvents.find((e) => e._id.toString() === targetId);
+    return Promise.resolve(found ? createEventDoc(found) : null);
+  };
+
+  SecurityEvent.findByIdAndUpdate = function (id, update, options) {
+    const targetId = id ? id.toString() : '';
+    const found = inMemoryEvents.find((e) => e._id.toString() === targetId);
+    if (!found) return Promise.resolve(null);
+    const updates = update.$set || update;
+    Object.assign(found, updates, { updatedAt: new Date() });
+    return Promise.resolve(createEventDoc(found));
+  };
+
+  SecurityEvent.find = function (filter = {}) {
+    let skipCount = 0;
+    let limitCount = Infinity;
+    let sortField = 'timestamp';
+    let sortOrder = -1;
+
+    const chainable = {
+      sort: function (sortObj = {}) {
+        const [field, order] = Object.entries(sortObj)[0] || ['timestamp', -1];
+        sortField = field;
+        sortOrder = order === 1 || order === 'asc' ? 1 : -1;
+        return chainable;
+      },
+      skip: function (n) {
+        skipCount = n;
+        return chainable;
+      },
+      limit: function (n) {
+        limitCount = n;
+        return chainable;
+      },
+      exec: function () {
+        return chainable.then((res) => res);
+      },
+      then: function (resolve, reject) {
+        const filtered = inMemoryEvents.filter((e) => matchesFilter(e, filter));
+        const sorted = [...filtered].sort((a, b) => {
+          if (a[sortField] < b[sortField]) return -1 * sortOrder;
+          if (a[sortField] > b[sortField]) return 1 * sortOrder;
+          return 0;
+        });
+        const paginated = sorted.slice(skipCount, skipCount + limitCount).map(createEventDoc);
+        return Promise.resolve(paginated).then(resolve, reject);
+      },
+    };
+
+    return chainable;
+  };
+
+  SecurityEvent.countDocuments = function (filter = {}) {
+    const matched = inMemoryEvents.filter((e) => matchesFilter(e, filter));
+    return Promise.resolve(matched.length);
+  };
 }
 
 function clearMockDb() {
   inMemoryUsers = [];
+  inMemoryEvents = [];
 }
 
 module.exports = {
   setupMockDb,
   clearMockDb,
   getUsers: () => inMemoryUsers,
+  getEvents: () => inMemoryEvents,
 };

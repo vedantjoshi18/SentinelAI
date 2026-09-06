@@ -18,7 +18,7 @@
 | **Phase 5** | **Deterministic Security Rule Engine** | **COMPLETED** | **PASSED** | 24 modular rules across SQLi, XSS, Path Traversal, and Command Injection, zero execution, tests passing. |
 | **Phase 6** | **Dynamic Risk Engine** | **COMPLETED** | **PASSED** | Multi-signal normalization to 0–100 risk score, floor overrides, ALLOW/MONITOR/BLOCK policy mapping. |
 | **Phase 7** | **Security Middleware Integration** | **COMPLETED** | **PASSED** | Request interceptor, deep inspection (Rules + AI + Risk Engine), rate limiting, automated 403 blocking. |
-| **Phase 8** | Security Event Logging & Audit APIs | Planned | Pending | MongoDB SecurityEvent audit logging with pagination & filtering. |
+| **Phase 8** | **Security Event Logging & Audit APIs** | **COMPLETED** | **PASSED** | MongoDB SecurityEvent schema, non-blocking logger, RBAC-protected SOC audit & metrics APIs. |
 | **Phase 9** | Behavioural Anomaly Detection | Planned | Pending | Isolation Forest on request frequencies, failed logins, error spikes. |
 | **Phase 10** | Behaviour Integration | Planned | Pending | UserBehaviour tracking feeding anomaly scores to the Risk Engine. |
 | **Phase 11** | React Security SOC Dashboard | Planned | Pending | Dark SOC theme, Recharts visualizations, live DB stats, manual analysis sandbox. |
@@ -211,4 +211,29 @@
 5. **Verification & Testing**:
    - 14 dedicated integration test cases in `server/tests/securityMiddleware.test.js` verifying SQLi, XSS, Path Traversal, and Command Injection blocking, benign pass-through, AI floor enforcement, offline resilience, and event dispatch.
    - Total test count: **72/72 tests passing** across 28 suites in `server`.
+   - AI service pytest test suite: **13/13 tests passing**.
+
+---
+
+## Phase 8: Security Event Logging & Audit APIs Details
+
+### Objectives Met:
+1. **SecurityEvent Data Model (`server/src/models/SecurityEvent.js`)**:
+   - Comprehensive Mongoose schema persisting timestamp, IP, HTTP method, path, threat category, risk score (0–100), severity tier, enforcement action, matched rules, AI confidence & model version, factors, breakdown, request velocity telemetry, user agent, user reference, sanitized payload snippet, and analyst resolution status.
+   - Compound indexes on `{ timestamp: -1 }`, `{ threatType: 1, timestamp: -1 }`, `{ severity: 1, timestamp: -1 }`, `{ action: 1, timestamp: -1 }`, `{ ip: 1, timestamp: -1 }`, `{ resolved: 1, timestamp: -1 }` for high-throughput SOC querying.
+2. **Non-Blocking Audit Event Logger (`server/src/services/eventLogger.js`)**:
+   - Integrated as the default handler in `securityMiddleware`.
+   - Asynchronous fire-and-forget logging ensuring zero latency impact on request handling.
+   - Sensitive password sanitization: payload strings exclude sensitive credentials, hashes, and secrets.
+   - Self-referential recursion prevention: internal queries to `/api/threats` are excluded from security event logging.
+3. **SOC Threat Audit APIs (`server/src/controllers/threatController.js` & `server/src/routes/threatRoutes.js`)**:
+   - `GET /api/threats`: Paginated audit logs with multi-attribute filtering by `threatType`, `severity`, `action`, `ip`, `resolved`, and timestamp range (`startDate`, `endDate`).
+   - `GET /api/threats/stats`: Aggregated metrics for dashboard visualizations (total events, blocked, monitored, allowed, threat breakdown by category, severity distribution, and recent critical threat incidents).
+   - `GET /api/threats/:id`: Individual event retrieval with full forensic telemetry.
+   - `PATCH /api/threats/:id/status`: Incident triage endpoint allowing SOC analysts to update resolution status and attach investigative notes.
+4. **Role-Based Access Control (RBAC)**:
+   - Audit query and triage endpoints are strictly protected by JWT authentication and RBAC (`ANALYST` and `ADMIN` roles only). Standard `USER` roles are rejected with HTTP `403 Forbidden`.
+5. **Verification & Testing**:
+   - 15 dedicated unit and integration tests in `server/tests/securityEvents.test.js` testing schema persistence, password sanitization, automatic gateway event creation, pagination, filtering, stats aggregation, single event retrieval, triage updates, and RBAC rejection.
+   - Full server test suite passing: **87/87 tests passing** across 34 test suites.
    - AI service pytest test suite: **13/13 tests passing**.

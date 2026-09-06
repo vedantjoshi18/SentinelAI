@@ -3,6 +3,8 @@ const threatService = require('../services/threatService');
 const riskEngine = require('../services/riskEngine');
 const { recordAndGetFrequency } = require('./rateLimiter');
 
+const { logSecurityEvent: defaultEventLogger } = require('../services/eventLogger');
+
 const DEFAULT_EXEMPT_PATHS = [
   '/api/health',
   '/health',
@@ -22,7 +24,9 @@ function createSecurityMiddleware(options = {}) {
   const threat = options.threatService || threatService;
   const risk = options.riskEngine || riskEngine;
   const exemptPaths = options.exemptPaths || DEFAULT_EXEMPT_PATHS;
-  const onSecurityEvent = options.onSecurityEvent || null;
+  const onSecurityEvent = options.onSecurityEvent !== undefined
+    ? options.onSecurityEvent
+    : defaultEventLogger;
 
   return async function securityMiddleware(req, res, next) {
     try {
@@ -127,7 +131,7 @@ function createSecurityMiddleware(options = {}) {
       // 9. Dispatch event hook for audit logging (non-blocking)
       if (typeof onSecurityEvent === 'function') {
         try {
-          onSecurityEvent(req.securityContext, req);
+          Promise.resolve(onSecurityEvent(req.securityContext, req)).catch(() => {});
         } catch (logErr) {
           // Non-blocking: audit log errors must never impact request flow
         }
