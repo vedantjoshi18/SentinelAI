@@ -1,4 +1,4 @@
-﻿# SentinelAI — Implementation Roadmap & Execution Log
+# SentinelAI — Implementation Roadmap & Execution Log
 
 **Project**: SentinelAI (AI-Powered Application Security & Intrusion Detection Platform)  
 **Subject**: Application Security and Intrusion Detection  
@@ -11,7 +11,7 @@
 | Phase | Description | Status | Pass/Fail | Notes |
 |---|---|---|---|---|
 | **Phase 0** | **Project Foundation & Monorepo Setup** | **COMPLETED** | **PASSED** | React (Vite) + Express + FastAPI initialized, health checks live, tests passing. |
-| **Phase 1** | Database + Authentication (MongoDB, JWT, bcrypt, RBAC) | Planned | Pending | User model, roles (USER, ANALYST, ADMIN), rate-limited login. |
+| **Phase 1** | **Database + Authentication (MongoDB, JWT, bcrypt, RBAC)** | **COMPLETED** | **PASSED** | User model, roles (USER, ANALYST, ADMIN), bcrypt hashing, JWT, repeated-login lockout, RBAC. |
 | **Phase 2** | Dataset Inspection & Preparation | Planned | Pending | HttpParamsDataset raw data exploration & preprocessing pipeline. |
 | **Phase 3** | Application Attack Classifier Training | Planned | Pending | TF-IDF + Logistic Regression / Random Forest, metrics evaluation. |
 | **Phase 4** | FastAPI AI Inference Service | Planned | Pending | `POST /predict` endpoint, Pydantic validation, model versioning. |
@@ -42,3 +42,22 @@
 5. **Environment Configuration**: Template `.env.example` created.
 6. **Git Hygiene**: Comprehensive `.gitignore` preventing secrets, node_modules, and cache files from being tracked.
 7. **Verification**: Automated test runners (`node --test` for server, `pytest` for FastAPI, `vite build` for client) all passing cleanly.
+
+---
+
+## Phase 1: Database & Authentication Details
+
+### Objectives Met:
+1. **Mongoose Database Connection**: `server/src/config/db.js` providing resilient MongoDB connection management.
+2. **User Model (`server/src/models/User.js`)**:
+   - Fields: `_id`, `name`, `email`, `passwordHash` (select: false), `role` (`USER`, `ANALYST`, `ADMIN`), `status` (`active`, `suspended`, `locked`), `failedLoginAttempts`, `lockedUntil`, `createdAt`, `updatedAt`.
+   - Methods: `comparePassword`, `isLocked`, `incrementFailedAttempts`, `resetLoginAttempts`.
+   - Security: bcrypt password hashing (cost factor 10), `passwordHash` and `__v` stripped from all JSON/object serializations.
+3. **Authentication Endpoints**:
+   - `POST /api/auth/register`: Input validation (name length, normalized email, password complexity), duplicate email detection (409 Conflict), JWT issuance.
+   - `POST /api/auth/login`: Account lockout check (423 Locked after 5 consecutive failures), bcrypt verification, failure attempt tracking, JWT issuance.
+   - `GET /api/auth/me`: Bearer token validation, retrieves sanitized user profile.
+4. **Role-Based Access Control (RBAC)**:
+   - `authMiddleware.js`: Validates Bearer token format, verifies signature using environment variable `JWT_SECRET`, checks expiration, verifies account is active.
+   - `roleMiddleware.js`: Enforces role-level permissions (`USER`, `ANALYST`, `ADMIN`) on protected endpoints with 403 Forbidden responses.
+5. **Verification**: 17 comprehensive automated tests passing with zero failures.
