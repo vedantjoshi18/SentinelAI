@@ -1,4 +1,4 @@
-﻿from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager
 import logging
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -7,7 +7,9 @@ from fastapi.exceptions import RequestValidationError
 
 from app.config import settings
 from app.services.classifier import classifier_service
+from app.services.anomaly import anomaly_service
 from app.api.routes.predict import router as predict_router
+from app.api.routes.anomaly import router as anomaly_router
 
 # Configure logging
 logging.basicConfig(
@@ -20,11 +22,18 @@ logger = logging.getLogger("sentinelai.main")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Initializing SentinelAI AI Microservice...")
-    loaded = classifier_service.load_artifacts()
-    if loaded:
-        logger.info(f"Classifier model loaded successfully (version: {settings.ATTACK_MODEL_VERSION}).")
+    loaded_attack = classifier_service.load_artifacts()
+    if loaded_attack:
+        logger.info(f"Attack classifier model loaded successfully (version: {settings.ATTACK_MODEL_VERSION}).")
     else:
-        logger.warning("Classifier model could not be loaded at startup.")
+        logger.warning("Attack classifier model could not be loaded at startup.")
+
+    loaded_anomaly = anomaly_service.load_artifacts()
+    if loaded_anomaly:
+        logger.info(f"Anomaly detector model loaded successfully (version: {settings.ANOMALY_MODEL_VERSION}).")
+    else:
+        logger.warning("Anomaly detector model could not be loaded at startup.")
+
     yield
     logger.info("Shutting down SentinelAI AI Microservice...")
 
@@ -77,16 +86,24 @@ async def generic_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Health check endpoint (compatible with Phase 0 & provides model health)
+# Health check endpoint (compatible with Phase 0/4 & provides model health)
 @app.get("/health", status_code=status.HTTP_200_OK, tags=["System Health"])
 def health_check():
+    attack_loaded = classifier_service.is_loaded()
+    anomaly_loaded = anomaly_service.is_loaded()
     return {
         "status": "ok",
-        "modelLoaded": classifier_service.is_loaded(),
+        "modelLoaded": attack_loaded and anomaly_loaded,
         "modelVersion": settings.ATTACK_MODEL_VERSION,
+        "attackModelLoaded": attack_loaded,
+        "attackModelVersion": settings.ATTACK_MODEL_VERSION,
+        "anomalyModelLoaded": anomaly_loaded,
+        "anomalyModelVersion": settings.ANOMALY_MODEL_VERSION,
     }
 
 
-# Include Routers (Available at root /predict and /api/predict for flexibility)
+# Include Routers (Available at root and /api for flexibility)
 app.include_router(predict_router)
 app.include_router(predict_router, prefix="/api")
+app.include_router(anomaly_router)
+app.include_router(anomaly_router, prefix="/api")

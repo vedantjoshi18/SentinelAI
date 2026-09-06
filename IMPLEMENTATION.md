@@ -19,7 +19,7 @@
 | **Phase 6** | **Dynamic Risk Engine** | **COMPLETED** | **PASSED** | Multi-signal normalization to 0–100 risk score, floor overrides, ALLOW/MONITOR/BLOCK policy mapping. |
 | **Phase 7** | **Security Middleware Integration** | **COMPLETED** | **PASSED** | Request interceptor, deep inspection (Rules + AI + Risk Engine), rate limiting, automated 403 blocking. |
 | **Phase 8** | **Security Event Logging & Audit APIs** | **COMPLETED** | **PASSED** | MongoDB SecurityEvent schema, non-blocking logger, RBAC-protected SOC audit & metrics APIs. |
-| **Phase 9** | Behavioural Anomaly Detection | Planned | Pending | Isolation Forest on request frequencies, failed logins, error spikes. |
+| **Phase 9** | **Behavioural Anomaly Detection** | **COMPLETED** | **PASSED** | Isolation Forest vs One-Class SVM benchmark (99.92% ROC-AUC, 100% precision), FastAPI `POST /anomaly`. |
 | **Phase 10** | Behaviour Integration | Planned | Pending | UserBehaviour tracking feeding anomaly scores to the Risk Engine. |
 | **Phase 11** | React Security SOC Dashboard | Planned | Pending | Dark SOC theme, Recharts visualizations, live DB stats, manual analysis sandbox. |
 | **Phase 12** | Admin & User Management | Planned | Pending | Server-side enforced RBAC controls and user administration. |
@@ -237,3 +237,39 @@
    - 15 dedicated unit and integration tests in `server/tests/securityEvents.test.js` testing schema persistence, password sanitization, automatic gateway event creation, pagination, filtering, stats aggregation, single event retrieval, triage updates, and RBAC rejection.
    - Full server test suite passing: **87/87 tests passing** across 34 test suites.
    - AI service pytest test suite: **13/13 tests passing**.
+
+---
+
+## Phase 9: Behavioural Anomaly Detection Details
+
+### Objectives Met:
+1. **Model Benchmark & Architecture Selection (`ml/training/train_anomaly_detector.py`)**:
+   - Evaluated **Isolation Forest** against **One-Class SVM** across 12,000 behavioral telemetry instances (10,000 normal human browsing records + 2,000 attack profiles covering credential stuffing, directory fuzzing, API flooding, and low-and-slow reconnaissance).
+   - Results Benchmark:
+     - **Isolation Forest**: **99.92% ROC-AUC**, **100.00% Precision**, **78.04% F1-score**, **6.34 µs/sample** inference latency, $O(t \cdot n \log n)$ scaling.
+     - **One-Class SVM**: 80.04% ROC-AUC, 81.52% Precision, 66.37% F1-score, 25.39 µs/sample latency, $O(n^3)$ scaling.
+     - **Verdict**: Isolation Forest decisively chosen for sub-millisecond inference and zero false positives.
+2. **Feature Engineering & Scaling**:
+   - 6-dimensional behavioral telemetry feature vector:
+     - `request_frequency` (velocity in req/min)
+     - `burst_frequency` (peak req/10s window)
+     - `failed_auth_count` (consecutive failed logins)
+     - `error_4xx_rate` (ratio of 4xx client errors)
+     - `path_entropy` (endpoint exploration diversity)
+     - `avg_interval_ms` (mean inter-request delay)
+   - Standardized using `StandardScaler`.
+3. **Artifact Serialization**:
+   - `ai-service/app/models/anomaly_detector/model.joblib`
+   - `ai-service/app/models/anomaly_detector/scaler.joblib`
+   - `ai-service/app/models/anomaly_detector/meta.joblib`
+   - `ml/evaluation/results/anomaly_evaluation.json`
+4. **FastAPI Microservice Integration (`POST /anomaly` & `POST /api/anomaly`)**:
+   - `AnomalyRequest` & `AnomalyResponse` Pydantic schemas validating non-negative values and proper bounded error rates.
+   - Singleton `AnomalyDetectorService` with in-memory caching during application lifespan.
+   - Piecewise calibrated score mapping raw decision function to standardized $[0.0, 1.0]$ severity score with categorical classification (`NORMAL`, `SUSPICIOUS`, `CRITICAL`).
+   - `GET /health` endpoint updated to report both attack and anomaly model readiness.
+5. **Verification & Testing**:
+   - 9 dedicated pytest test cases in `ai-service/tests/test_anomaly.py` verifying normal baseline, credential stuffing, directory fuzzing, API flooding, route aliases, and 422 input validation.
+   - Total AI service test count: **22/22 pytest tests passing**.
+   - Total Server test count: **87/87 tests passing**.
+   - Jupyter Notebook `ml/notebooks/03_anomaly_detector.ipynb` documenting benchmarking results, charts, and methodology.

@@ -1,0 +1,33 @@
+{
+  "benchmark": {
+    "IsolationForest": {
+      "precision": 1.0,
+      "recall": 0.6399,
+      "f1": 0.7804,
+      "roc_auc": 0.9992,
+      "train_time_sec": 0.204,
+      "inference_us": 6.34,
+      "verdict": "WINNER (Sub-millisecond inference, higher ROC-AUC, robust scale invariance)"
+    },
+    "OneClassSVM": {
+      "precision": 0.8152,
+      "recall": 0.5597,
+      "f1": 0.6637,
+      "roc_auc": 0.8004,
+      "train_time_sec": 0.087,
+      "inference_us": 25.39,
+      "verdict": "Sub-optimal (Quadratic training complexity, significantly higher inference latency)"
+    }
+  },
+  "features": [
+    "request_frequency",
+    "burst_frequency",
+    "failed_auth_count",
+    "error_4xx_rate",
+    "path_entropy",
+    "avg_interval_ms"
+  ],
+  "test_size": 3000,
+  "anomalies_in_test": 536,
+  "normal_in_test": 2464
+}

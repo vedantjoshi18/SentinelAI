@@ -14,5 +14,7 @@ class Settings:
     ATTACK_MODEL_PATH: Path = BASE_DIR / "app" / "models" / "attack_classifier" / "model.joblib"
     ATTACK_VECTORIZER_PATH: Path = BASE_DIR / "app" / "models" / "attack_classifier" / "vectorizer.joblib"
     ANOMALY_MODEL_PATH: Path = BASE_DIR / "app" / "models" / "anomaly_detector" / "model.joblib"
+    ANOMALY_SCALER_PATH: Path = BASE_DIR / "app" / "models" / "anomaly_detector" / "scaler.joblib"
+    ANOMALY_META_PATH: Path = BASE_DIR / "app" / "models" / "anomaly_detector" / "meta.joblib"
 
 settings = Settings()
