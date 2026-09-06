@@ -12,7 +12,7 @@
 |---|---|---|---|---|
 | **Phase 0** | **Project Foundation & Monorepo Setup** | **COMPLETED** | **PASSED** | React (Vite) + Express + FastAPI initialized, health checks live, tests passing. |
 | **Phase 1** | **Database + Authentication (MongoDB, JWT, bcrypt, RBAC)** | **COMPLETED** | **PASSED** | User model, roles (USER, ANALYST, ADMIN), bcrypt hashing, JWT, repeated-login lockout, RBAC. |
-| **Phase 2** | Dataset Inspection & Preparation | Planned | Pending | HttpParamsDataset raw data exploration & preprocessing pipeline. |
+| **Phase 2** | **Dataset Inspection & Preparation** | **COMPLETED** | **PASSED** | Inspected 31,067 records across 5 classes, 0 nulls, 0 duplicates, 0 leakage, generated notebook & processed datasets. |
 | **Phase 3** | Application Attack Classifier Training | Planned | Pending | TF-IDF + Logistic Regression / Random Forest, metrics evaluation. |
 | **Phase 4** | FastAPI AI Inference Service | Planned | Pending | `POST /predict` endpoint, Pydantic validation, model versioning. |
 | **Phase 5** | Deterministic Security Rule Engine | Planned | Pending | Modular signature rules for SQLi, XSS, Path Traversal, Cmd Injection. |
@@ -61,3 +61,24 @@
    - `authMiddleware.js`: Validates Bearer token format, verifies signature using environment variable `JWT_SECRET`, checks expiration, verifies account is active.
    - `roleMiddleware.js`: Enforces role-level permissions (`USER`, `ANALYST`, `ADMIN`) on protected endpoints with 403 Forbidden responses.
 5. **Verification**: 17 comprehensive automated tests passing with zero failures.
+
+---
+
+## Phase 2: Dataset Inspection & Preparation Details
+
+### Objectives Met:
+1. **Raw Dataset Inspection**:
+   - Primary: HttpParamsDataset under `ml/datasets/raw/http_params/` (`payload_train.csv` and `payload_test.csv`).
+   - Total rows: 31,067 records (Train: 20,712 | Test: 10,355).
+   - Columns: `payload`, `length`, `attack_type`, `label`.
+2. **Quality & Leakage Audit**:
+   - Missing values: 0 nulls across both partitions.
+   - Duplicate records: 0 duplicate payloads.
+   - Cross-partition data leakage: 0 intersecting payloads between train and test sets.
+3. **Class Verification**:
+   - Exact 5 target classes verified: `NORMAL` (62.14%), `SQL_INJECTION` (34.93%), `XSS` (1.71%), `PATH_TRAVERSAL` (0.93%), `COMMAND_INJECTION` (0.29%).
+4. **Reproducible Pipeline**:
+   - Script `ml/training/preprocess.py` creates standardized canonical CSVs in `ml/datasets/processed/`.
+   - Jupyter Notebook `ml/notebooks/01_dataset_exploration.ipynb` documents statistical audits, charts, and viva talking points.
+5. **Architectural Separation**:
+   - Clearly documented separation between Layer 7 HTTP application payload detection and Layer 3/4 CIC-IDS2017 network flow statistics.
