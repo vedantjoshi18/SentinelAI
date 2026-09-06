@@ -325,7 +325,7 @@
    - Clean 4-tab navigation bar (`TabNavigation`): **SOC Overview**, **Threat Event Feed**, **Attack Visualizations**, **Threat Sandbox**.
 2. **Global Authentication & Session Management**:
    - `client/src/context/AuthContext.jsx` with Bearer token persistence in `localStorage` and automatic JWT header injection via Axios request interceptors (`client/src/services/api.js`).
-   - `⚡ Instant Demo Analyst Login` shortcut button auto-logging in or registering `demo.analyst@sentinelai.local` with analyst privileges for zero-friction evaluation.
+   - `Instant Demo Analyst Login` shortcut button auto-logging in or registering `demo.analyst@sentinelai.local` with analyst privileges for zero-friction evaluation.
    - Modal-based sign-in and registration (`AuthModal`) with validation and error feedback.
 3. **Tab 1: SOC Overview & Executive Metrics**:
    - Real-time `MetricCards` presenting Total Evaluated Events, Blocked Intrusions with percentage interception rate, Monitored Suspicious Events, and Average Risk Level gauge.
@@ -369,7 +369,7 @@
    - `POST /api/admin/users/:id/unlock`: Resets `failedLoginAttempts: 0` and `lockedUntil: null`, restoring account to `active`.
    - `DELETE /api/admin/users/:id`: Permanently deletes user with self-deletion guard.
 3. **Frontend Integration**:
-   - `UserManagementView.jsx` rendered in Tab 5 ("Admin & RBAC"), accessible to `ADMIN` accounts or via `⚡ Demo Admin` button.
+   - `UserManagementView.jsx` rendered in Tab 5 ("Admin & RBAC"), accessible to `ADMIN` accounts or via `Demo Admin` button.
    - Features executive user metric cards, searchable/filterable user table, interactive role and status dropdowns, and instant unlock buttons.
 4. **Verification**: 15 dedicated tests in `server/tests/admin.test.js` passing cleanly.
 
