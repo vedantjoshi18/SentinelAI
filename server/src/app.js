@@ -28,15 +28,25 @@ if (process.env.NODE_ENV !== 'test') {
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
+const threatRoutes = require('./routes/threatRoutes');
+const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
+const { securityMiddleware } = require('./middleware/securityMiddleware');
 
-// Health check endpoint
+// Health check endpoint (exempt from security inspection)
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
 });
 
+// Rate limiting on API routes
+app.use('/api', apiLimiter);
+
+// SentinelAI Deep Inspection Security Middleware (Rules + AI + Dynamic Risk Engine)
+app.use(securityMiddleware);
+
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/threats', threatRoutes);
 
 // 404 handler for undefined routes
 app.use((req, res, next) => {

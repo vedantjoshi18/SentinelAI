@@ -17,7 +17,7 @@
 | **Phase 4** | **FastAPI AI Inference Service** | **COMPLETED** | **PASSED** | Startup artifact loading, `POST /predict`, Pydantic validation, structured errors, versioning. |
 | **Phase 5** | **Deterministic Security Rule Engine** | **COMPLETED** | **PASSED** | 24 modular rules across SQLi, XSS, Path Traversal, and Command Injection, zero execution, tests passing. |
 | **Phase 6** | **Dynamic Risk Engine** | **COMPLETED** | **PASSED** | Multi-signal normalization to 0–100 risk score, floor overrides, ALLOW/MONITOR/BLOCK policy mapping. |
-| **Phase 7** | Security Middleware Integration | Planned | Pending | Intercept Express requests, call AI + Rules + Risk Engine, ALLOW/MONITOR/BLOCK. |
+| **Phase 7** | **Security Middleware Integration** | **COMPLETED** | **PASSED** | Request interceptor, deep inspection (Rules + AI + Risk Engine), rate limiting, automated 403 blocking. |
 | **Phase 8** | Security Event Logging & Audit APIs | Planned | Pending | MongoDB SecurityEvent audit logging with pagination & filtering. |
 | **Phase 9** | Behavioural Anomaly Detection | Planned | Pending | Isolation Forest on request frequencies, failed logins, error spikes. |
 | **Phase 10** | Behaviour Integration | Planned | Pending | UserBehaviour tracking feeding anomaly scores to the Risk Engine. |
@@ -183,3 +183,32 @@
 5. **Verification & Testing**:
    - 19 dedicated unit tests in `server/tests/riskEngine.test.js` validating benign baselines, threshold tiers, floor overrides, bounds sanitization, determinism, and custom config overrides.
    - Full server test suite passing (58/58 tests passing).
+
+---
+
+## Phase 7: Security Middleware Integration Details
+
+### Objectives Met:
+1. **AI Microservice Client (`server/src/services/aiClient.js`)**:
+   - Asynchronous HTTP client communicating with FastAPI `POST /predict`.
+   - Built-in fault tolerance: handles network timeouts, unreachability, and server errors via graceful fallback without crashing Express.
+   - Microservice health probe `checkHealth()` targeting `GET /health`.
+2. **Rate Limiting & Velocity Tracking (`server/src/middleware/rateLimiter.js`)**:
+   - `apiLimiter`: 120 requests/minute general API rate limiter.
+   - `authLimiter`: 20 requests/15 minutes strict auth endpoint limiter to deter brute-force credential stuffing.
+   - `recordAndGetFrequency`: In-memory 60-second sliding window tracking requests/minute per client IP, feeding actual velocity into the dynamic risk engine.
+3. **Deep Packet Security Middleware (`server/src/middleware/securityMiddleware.js`)**:
+   - Intercepts all incoming Express requests before business logic or controllers execute.
+   - Multi-surface input extraction: inspects JSON bodies, URL query parameters, and route parameters. Excludes sensitive password fields to avoid false positives.
+   - Pipelined evaluation: Deterministic Rules $\rightarrow$ AI Payload Classifier $\rightarrow$ Risk Engine $\rightarrow$ Enforcement.
+   - Automated Policy Enforcement:
+     - `BLOCK`: Returns immediate HTTP `403 Forbidden` with structured JSON diagnostic context (`threatType`, `riskScore`, `severity`, `factors`, `ruleMatches`).
+     - `MONITOR` or `ALLOW`: Attaches enriched `req.securityContext` and invokes `next()`.
+   - Non-blocking `onSecurityEvent` audit hook for Phase 8 event logging.
+   - Exemption handling for health probes (`/api/health`) and sandbox inspection.
+4. **Threat Inspection Sandbox (`server/src/controllers/threatController.js` & `server/src/routes/threatRoutes.js`)**:
+   - `POST /api/threats/inspect`: Allows security analysts, dashboard users, or testing tools to submit arbitrary payloads for full diagnostic inspection without gateway blocking.
+5. **Verification & Testing**:
+   - 14 dedicated integration test cases in `server/tests/securityMiddleware.test.js` verifying SQLi, XSS, Path Traversal, and Command Injection blocking, benign pass-through, AI floor enforcement, offline resilience, and event dispatch.
+   - Total test count: **72/72 tests passing** across 28 suites in `server`.
+   - AI service pytest test suite: **13/13 tests passing**.
