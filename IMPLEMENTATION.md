@@ -21,7 +21,7 @@
 | **Phase 8** | **Security Event Logging & Audit APIs** | **COMPLETED** | **PASSED** | MongoDB SecurityEvent schema, non-blocking logger, RBAC-protected SOC audit & metrics APIs. |
 | **Phase 9** | **Behavioural Anomaly Detection** | **COMPLETED** | **PASSED** | Isolation Forest vs One-Class SVM benchmark (99.92% ROC-AUC, 100% precision), FastAPI `POST /anomaly`. |
 | **Phase 10** | **Behaviour Integration** | **COMPLETED** | **PASSED** | Real-time sliding window telemetry, Anomaly Detector AI integration, UserBehaviour persistence, 105 tests passing. |
-| **Phase 11** | React Security SOC Dashboard | Planned | Pending | Dark SOC theme, Recharts visualizations, live DB stats, manual analysis sandbox. |
+| **Phase 11** | **React Security SOC Dashboard** | **COMPLETED** | **PASSED** | Dark SOC theme (#0B0F19), Recharts visualizations, live DB stats, forensic triage modal, manual analysis sandbox. |
 | **Phase 12** | Admin & User Management | Planned | Pending | Server-side enforced RBAC controls and user administration. |
 | **Phase 13** | Security Hardening & Defenses | Planned | Pending | Helmet, CORS, input sanitization, rate limits, secret hygiene. |
 | **Phase 14** | Comprehensive Verification & Testing | Planned | Pending | Unit, integration, security, and ML model test suites. |
@@ -313,3 +313,41 @@
    - 18 dedicated test cases in `server/tests/behaviourIntegration.test.js` verifying schema persistence, sliding window mechanics, expired request pruning, 4xx rates, entropy, inter-arrival timing, AI client sanitization, offline fallback, health probe, risk floors, and end-to-end gateway blocking.
    - Total Server test count: **105/105 tests passing** across 40 test suites.
    - Total AI service test count: **22/22 pytest tests passing**.
+
+---
+
+## Phase 11: React Security SOC Dashboard Details
+
+### Objectives Met:
+1. **Cyber SOC Dark Theme & Layout Architecture**:
+   - Modern cybersecurity operations center palette (`#0B0F19` deep background, `#111827` cards, cyan/emerald/rose/amber semantic accents).
+   - Sticky `Topbar` displaying live microservice health badges (Express Gateway, AI Classifier, Isolation Forest Anomaly Engine), dynamic auto-sync frequency selector (`5s`, `10s`, `30s`, `Off`), manual refresh trigger, and user session controls.
+   - Clean 4-tab navigation bar (`TabNavigation`): **SOC Overview**, **Threat Event Feed**, **Attack Visualizations**, **Threat Sandbox**.
+2. **Global Authentication & Session Management**:
+   - `client/src/context/AuthContext.jsx` with Bearer token persistence in `localStorage` and automatic JWT header injection via Axios request interceptors (`client/src/services/api.js`).
+   - `⚡ Instant Demo Analyst Login` shortcut button auto-logging in or registering `demo.analyst@sentinelai.local` with analyst privileges for zero-friction evaluation.
+   - Modal-based sign-in and registration (`AuthModal`) with validation and error feedback.
+3. **Tab 1: SOC Overview & Executive Metrics**:
+   - Real-time `MetricCards` presenting Total Evaluated Events, Blocked Intrusions with percentage interception rate, Monitored Suspicious Events, and Average Risk Level gauge.
+   - `RecentIncidentsTable` showing top critical high-risk events with severity badges, risk scores, and quick triage inspection.
+   - Interactive 5-stage SentinelAI Defense Pipeline architecture map.
+4. **Tab 2: Live Threat Event Audit Feed**:
+   - Comprehensive `ThreatEventsTable` displaying timestamp, origin IP, threat vector, HTTP method/path, calculated risk score, severity badge, and policy action badge (`ALLOW` / `MONITOR` / `BLOCK`).
+   - `ThreatFilterBar` enabling instant multi-criteria filtering by Threat Category (SQLi, XSS, Path Traversal, CMDi, Behavioral Anomaly, Normal), Severity (Critical, High, Medium, Low), Action, and free-text IP/Path search.
+   - Client-side and server-side pagination support.
+5. **Tab 3: Attack Visualizations & Telemetry**:
+   - Recharts-powered `ThreatCategoryBarChart` breaking down attack vector frequencies with color-coded categorical bars.
+   - Recharts-powered `SeverityDistributionPie` rendering donut visualization of severity levels with tooltips and percentages.
+   - Micro-telemetry breakdown cards displaying real-time metrics across all system decisions.
+6. **Tab 4: Interactive Threat Sandbox**:
+   - Realistic attack presets selector (`PayloadPresetSelector`) covering SQL Injection tautology, XSS script injection, Path Traversal / LFI probe, and Command Injection.
+   - Live payload constructor (`CustomPayloadEditor`) supporting custom HTTP methods, paths, and JSON payloads.
+   - Real-time deep packet diagnostic inspector (`DiagnosticInspector`) displaying computed risk scores, dynamic engine decisions, deterministic rule signatures matched, and AI model predictions.
+7. **Forensic Incident Triage Modal**:
+   - `ThreatDetailModal` displaying full request telemetry (headers, user agent, IP, query params, body snippets with password redaction).
+   - Signal breakdown details (Rules, AI, Anomaly detection, and frequency factors).
+   - Interactive analyst triage update allowing toggling resolution status and saving investigative notes via `PATCH /api/threats/:id/status`.
+8. **Verification & Build**:
+   - `npm run build` in `client/` builds and bundles cleanly with 0 errors (`vite v5.4.21 built in 4.43s`).
+   - All 105 tests in `server/` pass with zero failures.
+   - All 22 tests in `ai-service/` pass with zero failures.

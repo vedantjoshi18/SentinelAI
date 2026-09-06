@@ -12,9 +12,9 @@
 SentinelAI enforces a multi-layered security architecture. AI is **never** treated as the sole line of defense; rather, it operates synergistically alongside deterministic controls:
 
 ```
-[ Incoming HTTP Request ]
-            │
-            ▼
+        [ Incoming HTTP Request ]
+                    │
+                    ▼
 ┌───────────────────────────────────────┐
 │ Layer 1: HTTP Hardening & Headers     │  (Helmet, Strict CORS, Size Bounds)
 └───────────────────┬───────────────────┘
