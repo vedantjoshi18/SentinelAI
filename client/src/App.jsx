@@ -244,13 +244,13 @@ function DashboardContent() {
                 onClick={loginAsDemoAnalyst}
                 className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center space-x-1.5"
               >
-                <span>⚡ Demo Analyst</span>
+                <span>Demo Analyst</span>
               </button>
               <button
                 onClick={loginAsDemoAdmin}
                 className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-cyan-500/20 flex items-center space-x-1.5"
               >
-                <span>⚡ Demo Admin</span>
+                <span>Demo Admin</span>
               </button>
               <button
                 onClick={() => setIsAuthModalOpen(true)}

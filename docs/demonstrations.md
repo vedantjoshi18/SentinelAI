@@ -164,7 +164,7 @@ Demonstrate manual deep packet security inspection in the web browser.
 Demonstrate server-side enforced RBAC controls and administrative lockout triage.
 
 ### Steps
-1. Click **⚡ Instant Demo Admin Login** in the dashboard topbar.
+1. Click **Demo Admin** in the dashboard topbar or sign in modal.
 2. Notice the **Admin & RBAC** tab appears in the top navigation.
 3. In the user management table:
    - Locate the locked account (`victim@sentinelai.local`).

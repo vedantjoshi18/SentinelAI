@@ -38,8 +38,8 @@ SentinelAI is an enterprise-grade hybrid intrusion detection and application sec
 
 ### Instant One-Click Login Buttons
 On the topbar of the web UI:
-- **`⚡ Demo Analyst`**: Automatically logs in as `demo.analyst@sentinelai.local` (Password: `AnalystPassword123!`), providing immediate access to the SOC Overview, Live Threat Feed, Visualizations, and Sandbox.
-- **`⚡ Demo Admin`**: Automatically logs in as `demo.admin@sentinelai.local` (Password: `AdminPassword123!`), unlocking the **Admin & RBAC** user management panel in addition to all analyst tools.
+- **`Demo Analyst`**: Automatically logs in as `demo.analyst@sentinelai.local` (Password: `AnalystPassword123!`), providing immediate access to the SOC Overview, Live Threat Feed, Visualizations, and Sandbox.
+- **`Demo Admin`**: Automatically logs in as `demo.admin@sentinelai.local` (Password: `AdminPassword123!`), unlocking the **Admin & RBAC** user management panel in addition to all analyst tools.
 
 ---
 

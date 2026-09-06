@@ -194,7 +194,7 @@ export default function AuthModal({ isOpen, onClose }) {
           disabled={loading}
           className="w-full py-2 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 font-semibold rounded-lg text-xs tracking-wider uppercase transition flex items-center justify-center space-x-2"
         >
-          <span>⚡ Instant Demo Analyst Login</span>
+          <span>Instant Demo Analyst Login</span>
         </button>
       </div>
     </div>

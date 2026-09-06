@@ -141,13 +141,13 @@ export default function Topbar({
               onClick={loginAsDemoAnalyst}
               className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
             >
-              <span>⚡ Analyst</span>
+              <span>Demo Analyst</span>
             </button>
             <button
               onClick={loginAsDemoAdmin}
               className="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
             >
-              <span>⚡ Admin</span>
+              <span>Demo Admin</span>
             </button>
             <button
               onClick={onOpenAuthModal}
