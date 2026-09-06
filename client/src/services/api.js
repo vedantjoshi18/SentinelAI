@@ -36,4 +36,14 @@ export const systemApi = {
   getHealth: () => api.get('/health').then((r) => r.data),
 };
 
+export const adminApi = {
+  getStats: () => api.get('/admin/stats').then((r) => r.data),
+  getUsers: (params = {}) => api.get('/admin/users', { params }).then((r) => r.data),
+  getUserById: (id) => api.get(`/admin/users/${id}`).then((r) => r.data),
+  updateRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }).then((r) => r.data),
+  updateStatus: (id, status) => api.patch(`/admin/users/${id}/status`, { status }).then((r) => r.data),
+  unlockUser: (id) => api.post(`/admin/users/${id}/unlock`).then((r) => r.data),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+};
+
 export default api;

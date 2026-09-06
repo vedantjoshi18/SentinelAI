@@ -1,14 +1,15 @@
 import React from 'react';
-import { LayoutDashboard, ShieldAlert, BarChart3, Terminal } from 'lucide-react';
+import { LayoutDashboard, ShieldAlert, BarChart3, Terminal, UserCog } from 'lucide-react';
 
 const TABS = [
   { id: 'overview', label: 'SOC Overview', icon: LayoutDashboard },
   { id: 'threats', label: 'Threat Event Feed', icon: ShieldAlert },
   { id: 'analytics', label: 'Attack Visualizations', icon: BarChart3 },
   { id: 'sandbox', label: 'Threat Sandbox', icon: Terminal },
+  { id: 'admin', label: 'Admin & RBAC', icon: UserCog },
 ];
 
-export default function TabNavigation({ activeTab, onSelectTab, eventCount }) {
+export default function TabNavigation({ activeTab, onSelectTab, eventCount, isAdmin }) {
   return (
     <div className="border-b border-slate-800 bg-[#0F172A]/90 px-6">
       <nav className="flex space-x-2 -mb-px">

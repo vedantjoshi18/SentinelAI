@@ -81,9 +81,20 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginAsDemoAdmin = async () => {
+    const email = 'demo.admin@sentinelai.local';
+    const password = 'AdminPassword123!';
+    try {
+      return await login(email, password);
+    } catch (err) {
+      return await register('Demo Super Admin', email, password, 'ADMIN');
+    }
+  };
+
   const isAnalystOrAdmin = Boolean(
     user && (user.role === 'ANALYST' || user.role === 'ADMIN')
   );
+  const isAdmin = Boolean(user && user.role === 'ADMIN');
 
   return (
     <AuthContext.Provider
@@ -93,10 +104,12 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated: Boolean(token),
         isAnalystOrAdmin,
+        isAdmin,
         login,
         register,
         logout,
         loginAsDemoAnalyst,
+        loginAsDemoAdmin,
       }}
     >
       {children}

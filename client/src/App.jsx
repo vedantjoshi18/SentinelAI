@@ -15,11 +15,12 @@ import PayloadPresetSelector, { PRESETS } from './components/sandbox/PayloadPres
 import CustomPayloadEditor from './components/sandbox/CustomPayloadEditor';
 import DiagnosticInspector from './components/sandbox/DiagnosticInspector';
 import AuthModal from './components/common/AuthModal';
+import UserManagementView from './components/admin/UserManagementView';
 
 import { Sparkles, AlertCircle, ShieldAlert, ShieldCheck, Cpu, Layers } from 'lucide-react';
 
 function DashboardContent() {
-  const { isAuthenticated, isAnalystOrAdmin, loginAsDemoAnalyst } = useAuth();
+  const { isAuthenticated, isAnalystOrAdmin, isAdmin, loginAsDemoAnalyst, loginAsDemoAdmin } = useAuth();
 
   // Navigation state
   const [activeTab, setActiveTab] = useState('overview');
@@ -219,6 +220,7 @@ function DashboardContent() {
         activeTab={activeTab}
         onSelectTab={setActiveTab}
         eventCount={totalEvents}
+        isAdmin={isAdmin}
       />
 
       {/* Main Content Area */}
@@ -240,15 +242,21 @@ function DashboardContent() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={loginAsDemoAnalyst}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center space-x-1.5"
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center space-x-1.5"
               >
-                <span>⚡ Instant Demo Analyst Login</span>
+                <span>⚡ Demo Analyst</span>
+              </button>
+              <button
+                onClick={loginAsDemoAdmin}
+                className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-cyan-500/20 flex items-center space-x-1.5"
+              >
+                <span>⚡ Demo Admin</span>
               </button>
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700"
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700"
               >
-                Sign In / Register
+                Sign In
               </button>
             </div>
           </div>
@@ -394,6 +402,11 @@ function DashboardContent() {
               />
             </div>
           </div>
+        )}
+
+        {/* Tab 5: Admin & User Management */}
+        {activeTab === 'admin' && (
+          <UserManagementView />
         )}
       </main>
 

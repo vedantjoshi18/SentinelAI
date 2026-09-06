@@ -48,6 +48,12 @@ function createUserDoc(data) {
     }
     return this;
   };
+  doc.save = async function () {
+    const idx = inMemoryUsers.findIndex((u) => u._id === this._id);
+    if (idx >= 0) inMemoryUsers[idx] = this;
+    else inMemoryUsers.push(this);
+    return this;
+  };
   doc.toJSON = function () {
     const copy = { ...this };
     delete copy.passwordHash;
@@ -163,14 +169,76 @@ function setupMockDb() {
   User.findById = function (id) {
     const targetId = id ? id.toString() : '';
     const found = inMemoryUsers.find((u) => u._id.toString() === targetId);
-    if (!found) return Promise.resolve(null);
-    return Promise.resolve(found);
+    const chainable = {
+      select: function () {
+        return chainable;
+      },
+      then: function (resolve, reject) {
+        if (!found) return Promise.resolve(null).then(resolve, reject);
+        return Promise.resolve(found).then(resolve, reject);
+      },
+    };
+    return chainable;
   };
 
   User.create = async function (data) {
     const doc = createUserDoc(data);
     inMemoryUsers.push(doc);
     return doc;
+  };
+
+  User.find = function (filter = {}) {
+    let skipCount = 0;
+    let limitCount = Infinity;
+    const chainable = {
+      select: function () {
+        return chainable;
+      },
+      sort: function () {
+        return chainable;
+      },
+      skip: function (n) {
+        skipCount = n;
+        return chainable;
+      },
+      limit: function (n) {
+        limitCount = n;
+        return chainable;
+      },
+      then: function (resolve, reject) {
+        let users = inMemoryUsers;
+        if (filter.role) users = users.filter((u) => u.role === filter.role);
+        if (filter.status) users = users.filter((u) => u.status === filter.status);
+        if (filter.$or) {
+          users = users.filter((u) =>
+            filter.$or.some((cond) => {
+              if (cond.name && cond.name.test(u.name)) return true;
+              if (cond.email && cond.email.test(u.email)) return true;
+              return false;
+            })
+          );
+        }
+        return Promise.resolve(users.slice(skipCount, skipCount + limitCount)).then(resolve, reject);
+      },
+    };
+    return chainable;
+  };
+
+  User.countDocuments = function (filter = {}) {
+    let users = inMemoryUsers;
+    if (filter.role) users = users.filter((u) => u.role === filter.role);
+    if (filter.status) users = users.filter((u) => u.status === filter.status);
+    return Promise.resolve(users.length);
+  };
+
+  User.findByIdAndDelete = function (id) {
+    const targetId = id ? id.toString() : '';
+    const idx = inMemoryUsers.findIndex((u) => u._id.toString() === targetId);
+    if (idx >= 0) {
+      const removed = inMemoryUsers.splice(idx, 1)[0];
+      return Promise.resolve(removed);
+    }
+    return Promise.resolve(null);
   };
 
   // SecurityEvent Mocking

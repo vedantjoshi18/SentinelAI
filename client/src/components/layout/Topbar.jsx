@@ -19,7 +19,7 @@ export default function Topbar({
   isRefreshing,
   onOpenAuthModal,
 }) {
-  const { user, isAuthenticated, logout, loginAsDemoAnalyst } = useAuth();
+  const { user, isAuthenticated, logout, loginAsDemoAnalyst, loginAsDemoAdmin } = useAuth();
 
   return (
     <header className="border-b border-slate-800 bg-[#111827]/90 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
@@ -139,9 +139,15 @@ export default function Topbar({
           <div className="flex items-center space-x-2">
             <button
               onClick={loginAsDemoAnalyst}
-              className="px-3 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1.5"
+              className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
             >
-              <span>⚡ Demo Analyst</span>
+              <span>⚡ Analyst</span>
+            </button>
+            <button
+              onClick={loginAsDemoAdmin}
+              className="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
+            >
+              <span>⚡ Admin</span>
             </button>
             <button
               onClick={onOpenAuthModal}
