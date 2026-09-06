@@ -15,7 +15,7 @@
 | **Phase 2** | **Dataset Inspection & Preparation** | **COMPLETED** | **PASSED** | Inspected 31,067 records across 5 classes, 0 nulls, 0 duplicates, 0 leakage, generated notebook & processed datasets. |
 | **Phase 3** | **Application Attack Classifier Training** | **COMPLETED** | **PASSED** | Sub-word char TF-IDF + Balanced Logistic Regression, 99.86% accuracy, 97.17% Macro F1, artifacts serialized. |
 | **Phase 4** | **FastAPI AI Inference Service** | **COMPLETED** | **PASSED** | Startup artifact loading, `POST /predict`, Pydantic validation, structured errors, versioning. |
-| **Phase 5** | Deterministic Security Rule Engine | Planned | Pending | Modular signature rules for SQLi, XSS, Path Traversal, Cmd Injection. |
+| **Phase 5** | **Deterministic Security Rule Engine** | **COMPLETED** | **PASSED** | 24 modular rules across SQLi, XSS, Path Traversal, and Command Injection, zero execution, tests passing. |
 | **Phase 6** | Dynamic Risk Engine | Planned | Pending | Multi-signal normalization to 0–100 risk score and policy mapping. |
 | **Phase 7** | Security Middleware Integration | Planned | Pending | Intercept Express requests, call AI + Rules + Risk Engine, ALLOW/MONITOR/BLOCK. |
 | **Phase 8** | Security Event Logging & Audit APIs | Planned | Pending | MongoDB SecurityEvent audit logging with pagination & filtering. |
@@ -128,3 +128,23 @@
 5. **Testing & Live Verification**:
    - 13 comprehensive pytest test cases passing in `ai-service/tests/test_predict.py` and `ai-service/tests/test_health.py`.
    - Verified live with `uvicorn` and `Invoke-RestMethod` across Normal, SQLi, XSS, Path Traversal, and Command Injection inputs.
+
+---
+
+## Phase 5: Deterministic Security Rule Engine Details
+
+### Objectives Met:
+1. **Modular Rule Catalog (`server/src/services/rules/`)**:
+   - 24 deterministic detection rules covering SQL Injection, XSS, Path Traversal, and Command Injection.
+   - Distinct severity weights: `CRITICAL` (4), `HIGH` (3), `MEDIUM` (2), `LOW` (1), `NONE` (0).
+2. **Deterministic Threat Service (`server/src/services/threatService.js`)**:
+   - Analyzes raw strings, JSON request bodies, and URL query structures.
+   - Performs safe URL-decoding to uncover encoded evasion attempts (e.g. `%3Cscript%3E`, `%27%20OR%201=1`).
+   - Automatically computes aggregate match list, highest severity level, and unified category (`SQL_INJECTION`, `XSS`, `PATH_TRAVERSAL`, `COMMAND_INJECTION`, or `MULTIPLE`).
+3. **Execution Safety Guarantee**:
+   - Strictly pattern-matching based; bounded text lengths prevent ReDoS.
+   - Never evaluates or executes input (`eval`, shell, or vm).
+4. **Verification & Testing**:
+   - 22 dedicated test cases in `server/tests/threatRules.test.js` passing (39 total tests passing in server test suite).
+5. **Documentation**:
+   - Documented defense-in-depth architecture, rule catalog, and safety model in `docs/security.md`.
