@@ -16,7 +16,7 @@
 | **Phase 3** | **Application Attack Classifier Training** | **COMPLETED** | **PASSED** | Sub-word char TF-IDF + Balanced Logistic Regression, 99.86% accuracy, 97.17% Macro F1, artifacts serialized. |
 | **Phase 4** | **FastAPI AI Inference Service** | **COMPLETED** | **PASSED** | Startup artifact loading, `POST /predict`, Pydantic validation, structured errors, versioning. |
 | **Phase 5** | **Deterministic Security Rule Engine** | **COMPLETED** | **PASSED** | 24 modular rules across SQLi, XSS, Path Traversal, and Command Injection, zero execution, tests passing. |
-| **Phase 6** | Dynamic Risk Engine | Planned | Pending | Multi-signal normalization to 0–100 risk score and policy mapping. |
+| **Phase 6** | **Dynamic Risk Engine** | **COMPLETED** | **PASSED** | Multi-signal normalization to 0–100 risk score, floor overrides, ALLOW/MONITOR/BLOCK policy mapping. |
 | **Phase 7** | Security Middleware Integration | Planned | Pending | Intercept Express requests, call AI + Rules + Risk Engine, ALLOW/MONITOR/BLOCK. |
 | **Phase 8** | Security Event Logging & Audit APIs | Planned | Pending | MongoDB SecurityEvent audit logging with pagination & filtering. |
 | **Phase 9** | Behavioural Anomaly Detection | Planned | Pending | Isolation Forest on request frequencies, failed logins, error spikes. |
@@ -148,3 +148,38 @@
    - 22 dedicated test cases in `server/tests/threatRules.test.js` passing (39 total tests passing in server test suite).
 5. **Documentation**:
    - Documented defense-in-depth architecture, rule catalog, and safety model in `docs/security.md`.
+
+---
+
+## Phase 6: Dynamic Risk Engine Details
+
+### Objectives Met:
+1. **Multi-Signal Normalization (`server/src/services/riskEngine.js`)**:
+   - Ingests telemetry across 6 security dimensions:
+     - AI Payload Prediction Confidence (weight: 0.35)
+     - Deterministic Rule Signature Match (weight: 0.30)
+     - Behavioral Anomaly Detector Score (weight: 0.15)
+     - Repeated Failed Authentication Attempts (weight: 0.10)
+     - Request Burst Frequency Rate (weight: 0.05)
+     - Historical Violation Frequency (weight: 0.05)
+   - Normalizes all input signals into consistent 0–100 scale with robust input sanitization against NaN/invalid types.
+2. **Defensive Risk Floors (Non-Dilution Guarantee)**:
+   - Prevents active, high-confidence exploits from being watered down by benign peripheral metrics:
+     - `CRITICAL` Rule Match enforces floor of **85** (`CRITICAL_RULE_MATCH_FLOOR`).
+     - `HIGH` Rule Match enforces floor of **65** (`HIGH_RULE_MATCH_FLOOR`).
+     - AI Payload Confidence $\ge 0.95$ enforces floor of **85** (`HIGH_CONFIDENCE_AI_EXPLOIT_FLOOR`).
+     - AI Payload Confidence $\ge 0.80$ enforces floor of **65** (`MODERATE_CONFIDENCE_AI_EXPLOIT_FLOOR`).
+     - Account Lockout burst ($\ge 5$ failed auth attempts) enforces floor of **80** (`ACCOUNT_LOCKOUT_BURST_FLOOR`).
+3. **Thresholding and Automated Action Policy**:
+   - Strict 4-tier risk severity classification:
+     - **0 – 29**: `LOW` $\rightarrow$ `ALLOW`
+     - **30 – 59**: `MEDIUM` $\rightarrow$ `MONITOR`
+     - **60 – 79**: `HIGH` $\rightarrow$ `BLOCK`
+     - **80 – 100**: `CRITICAL` $\rightarrow$ `BLOCK`
+   - Strict mathematical bounds $[0, 100]$ and deterministic evaluation guarantees.
+   - Modular configurability allowing custom threshold, weight, and action mappings.
+4. **Diagnostic Telemetry Breakdown**:
+   - Outputs detailed sub-scores (`breakdown`) and triggered floor overrides (`factors`) for audit logs and SOC visualization.
+5. **Verification & Testing**:
+   - 19 dedicated unit tests in `server/tests/riskEngine.test.js` validating benign baselines, threshold tiers, floor overrides, bounds sanitization, determinism, and custom config overrides.
+   - Full server test suite passing (58/58 tests passing).
