@@ -8,8 +8,10 @@ from fastapi.exceptions import RequestValidationError
 from app.config import settings
 from app.services.classifier import classifier_service
 from app.services.anomaly import anomaly_service
+from app.services.network_ids import network_ids_service
 from app.api.routes.predict import router as predict_router
 from app.api.routes.anomaly import router as anomaly_router
+from app.api.routes.network import router as network_router
 
 # Configure logging
 logging.basicConfig(
@@ -91,6 +93,7 @@ async def generic_exception_handler(request: Request, exc: Exception):
 def health_check():
     attack_loaded = classifier_service.is_loaded()
     anomaly_loaded = anomaly_service.is_loaded()
+    network_loaded = network_ids_service.is_loaded()
     return {
         "status": "ok",
         "modelLoaded": attack_loaded and anomaly_loaded,
@@ -99,6 +102,8 @@ def health_check():
         "attackModelVersion": settings.ATTACK_MODEL_VERSION,
         "anomalyModelLoaded": anomaly_loaded,
         "anomalyModelVersion": settings.ANOMALY_MODEL_VERSION,
+        "networkIdsLoaded": network_loaded,
+        "networkIdsVersion": network_ids_service.version,
     }
 
 
@@ -107,3 +112,5 @@ app.include_router(predict_router)
 app.include_router(predict_router, prefix="/api")
 app.include_router(anomaly_router)
 app.include_router(anomaly_router, prefix="/api")
+app.include_router(network_router)
+app.include_router(network_router, prefix="/api")

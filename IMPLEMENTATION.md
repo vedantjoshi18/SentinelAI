@@ -22,13 +22,13 @@
 | **Phase 9** | **Behavioural Anomaly Detection** | **COMPLETED** | **PASSED** | Isolation Forest vs One-Class SVM benchmark (99.92% ROC-AUC, 100% precision), FastAPI `POST /anomaly`. |
 | **Phase 10** | **Behaviour Integration** | **COMPLETED** | **PASSED** | Real-time sliding window telemetry, Anomaly Detector AI integration, UserBehaviour persistence, 105 tests passing. |
 | **Phase 11** | **React Security SOC Dashboard** | **COMPLETED** | **PASSED** | Dark SOC theme (#0B0F19), Recharts visualizations, live DB stats, forensic triage modal, manual analysis sandbox. |
-| **Phase 12** | Admin & User Management | Planned | Pending | Server-side enforced RBAC controls and user administration. |
-| **Phase 13** | Security Hardening & Defenses | Planned | Pending | Helmet, CORS, input sanitization, rate limits, secret hygiene. |
-| **Phase 14** | Comprehensive Verification & Testing | Planned | Pending | Unit, integration, security, and ML model test suites. |
-| **Phase 15** | Optional Network IDS | Optional | Pending | Flow-based intrusion detection with CIC-IDS2017 (separate from payload classifier). |
-| **Phase 16** | Professionalization | Planned | Pending | Docker Compose, API swagger, structured logs, production readiness. |
-| **Phase 17** | Complete Documentation | Planned | Pending | viva.md, architecture.md, api.md, ml-methodology.md, dataset.md. |
-| **Phase 18** | Final End-to-End Live Demonstrations | Planned | Pending | 6 verifiable demonstration flows for viva presentation. |
+| **Phase 12** | **Admin & User Management** | **COMPLETED** | **PASSED** | Server-side enforced RBAC controls, user administration, status toggling, lockout reset, 15 tests passing. |
+| **Phase 13** | **Security Hardening & Defenses** | **COMPLETED** | **PASSED** | Helmet CSP/HSTS headers, input sanitization, NoSQL injection neutralization, rate limiting, secret validator. |
+| **Phase 14** | **Comprehensive Verification & Testing** | **COMPLETED** | **PASSED** | 130 server tests passing, 29 AI pytest tests passing, client builds cleanly in production. |
+| **Phase 15** | **Network IDS (Layer 3/4 Flow Intrusion Detection)** | **COMPLETED** | **PASSED** | CIC-IDS2017 flow feature classifier, DoS SYN flood, port scan & brute force detection in FastAPI. |
+| **Phase 16** | **Professionalization & Production Readiness** | **COMPLETED** | **PASSED** | Docker Compose multi-container stack, Dockerfiles, Nginx reverse proxy, OpenAPI 3.0 specification. |
+| **Phase 17** | **Complete Documentation** | **COMPLETED** | **PASSED** | viva.md, architecture.md, api.md, ml-methodology.md, dataset.md, PLATFORM_GUIDE.md, DEPLOYMENT_GUIDE.md. |
+| **Phase 18** | **Final End-to-End Live Demonstrations** | **COMPLETED** | **PASSED** | 6 verifiable viva demonstration scripts in docs/demonstrations.md for evaluator testing. |
 
 ---
 
@@ -351,3 +351,103 @@
    - `npm run build` in `client/` builds and bundles cleanly with 0 errors (`vite v5.4.21 built in 4.43s`).
    - All 105 tests in `server/` pass with zero failures.
    - All 22 tests in `ai-service/` pass with zero failures.
+
+---
+
+## Phase 12: Admin & User Management Details
+
+### Objectives Met:
+1. **Server-Side RBAC Enforcement**:
+   - `server/src/controllers/adminController.js` and `server/src/routes/adminRoutes.js` mounted at `/api/admin`.
+   - Strict `authenticate` and `authorizeRoles('ADMIN')` middleware pipeline on all endpoints.
+   - Prevents unauthorized access from unauthenticated clients (401) and standard users/analysts (403).
+2. **Administrative Operations**:
+   - `GET /api/admin/users`: Paginated user list with role, status, and free-text search filters.
+   - `GET /api/admin/stats`: Aggregates total users, role distributions, and locked accounts.
+   - `PATCH /api/admin/users/:id/role`: Dynamically updates user role (`USER`, `ANALYST`, `ADMIN`) with self-demotion safety guard.
+   - `PATCH /api/admin/users/:id/status`: Updates account status (`active`, `suspended`, `locked`) with self-suspension guard.
+   - `POST /api/admin/users/:id/unlock`: Resets `failedLoginAttempts: 0` and `lockedUntil: null`, restoring account to `active`.
+   - `DELETE /api/admin/users/:id`: Permanently deletes user with self-deletion guard.
+3. **Frontend Integration**:
+   - `UserManagementView.jsx` rendered in Tab 5 ("Admin & RBAC"), accessible to `ADMIN` accounts or via `⚡ Demo Admin` button.
+   - Features executive user metric cards, searchable/filterable user table, interactive role and status dropdowns, and instant unlock buttons.
+4. **Verification**: 15 dedicated tests in `server/tests/admin.test.js` passing cleanly.
+
+---
+
+## Phase 13: Security Hardening & Defenses Details
+
+### Objectives Met:
+1. **Helmet HTTP Security Headers**:
+   - Strict Content Security Policy (CSP) with parameterized directives (`default-src 'self'`).
+   - Frameguard `X-Frame-Options: DENY` preventing clickjacking.
+   - MIME sniffing protection `X-Content-Type-Options: nosniff`.
+   - Automated HSTS (`Strict-Transport-Security`) in production mode (`maxAge: 31536000, includeSubDomains: true, preload: true`).
+2. **Input Sanitization & NoSQL Injection Defense**:
+   - `server/src/middleware/sanitizationMiddleware.js` recursively strips MongoDB operator keys (`$where`, `$gt`, etc.) from incoming bodies, query parameters, and URL parameters.
+   - Strips null-byte injections (`\0`) and prototype pollution vectors (`__proto__`, `constructor`).
+3. **Cryptographic Secret Hygiene**:
+   - `server/src/config/securityValidator.js` enforces minimum 32-character entropy and flags default/fallback secrets in production.
+4. **Verification**: 10 dedicated tests in `server/tests/securityHardening.test.js` passing cleanly.
+
+---
+
+## Phase 14: Comprehensive Verification & Testing Details
+
+### Objectives Met:
+1. **Full-Spectrum Verification**:
+   - Server Test Suite: **130/130 automated tests passing** across 51 suites (`npm test` in `server/`).
+   - AI Service Test Suite: **29/29 pytest tests passing** across prediction, anomaly, and network flow modules (`pytest` in `ai-service/`).
+   - Frontend Production Bundle: **0 build errors** via Vite (`npm run build` in `client/`).
+2. **Zero Known Regressions**: All deterministic rule tests, risk engine bounds, AI clients, sliding-window anomalies, RBAC guards, and security hardening tests pass concurrently.
+
+---
+
+## Phase 15: Network IDS (Layer 3/4 Flow Intrusion Detection) Details
+
+### Objectives Met:
+1. **Architectural Separation**:
+   - Clear separation established between Layer 7 HTTP application payload classification and Layer 3/4 CIC-IDS2017 network flow statistics.
+2. **Flow Feature Classifier**:
+   - `ai-service/app/schemas/network.py`: Pydantic validation for flow metrics (`flow_duration_ms`, `total_fwd_packets`, `total_bwd_packets`, `flow_bytes_per_sec`, `flow_packets_per_sec`, `syn_flag_count`, `ack_flag_count`, `fin_flag_count`).
+   - `ai-service/app/services/network_ids.py`: Classifies flows into `BENIGN`, `DOS_SYN_FLOOD`, `PORT_SCAN`, `BRUTE_FORCE`.
+   - `ai-service/app/api/routes/network.py`: Route `POST /network/flow` and `/api/network/flow`.
+3. **Backend Client Integration**:
+   - `server/src/services/aiClient.js` includes `classifyNetworkFlow(flowData)` and monitors `networkIdsLoaded` in health probes.
+4. **Verification**: 7 dedicated test cases in `ai-service/tests/test_network_ids.py` passing cleanly.
+
+---
+
+## Phase 16: Professionalization & Production Readiness Details
+
+### Objectives Met:
+1. **Multi-Container Docker Architecture**:
+   - Root `docker-compose.yml` orchestrating MongoDB 7.0, FastAPI AI Microservice, Node.js Express Gateway, and Nginx-powered React Client with automated healthchecks and internal network bridges.
+   - Individual multi-stage Dockerfiles and `.dockerignore` files for `server`, `ai-service`, and `client`.
+2. **OpenAPI 3.0 Specification**:
+   - `docs/openapi.yaml` documenting all API endpoints, schemas, parameters, and responses.
+
+---
+
+## Phase 17: Complete Documentation Details
+
+### Objectives Met:
+1. **Master Guides**:
+   - `docs/PLATFORM_GUIDE.md`: Comprehensive explanation of all 10 system components, user roles, and access walkthrough.
+   - `docs/DEPLOYMENT_GUIDE.md`: Production deployment guide for Docker Compose, Bare-Metal, and Linux Cloud VPS with Let's Encrypt SSL/TLS.
+   - `docs/viva.md`: In-depth oral defense and viva questions covering algorithms, theoretical foundations, benchmarks, and architectural decisions.
+   - `docs/architecture.md`, `docs/api.md`, `docs/ml-methodology.md`, `docs/dataset.md`, and `docs/security.md`.
+
+---
+
+## Phase 18: Final End-to-End Live Demonstrations Details
+
+### Objectives Met:
+1. **Reproducible Demonstration Scripts**:
+   - `docs/demonstrations.md` detailing 6 live scenarios with exact curl commands, HTTP response codes (403, 423, 200), and dashboard reflections:
+     1. SQL Injection Attack Detection & Automated Gateway Block (403).
+     2. Cross-Site Scripting (XSS) & Path Traversal Interception.
+     3. Brute Force Credential Stuffing & Automated Account Lockout (423).
+     4. Volumetric Burst & Directory Fuzzing Behavioral Anomaly Detection.
+     5. Interactive Threat Sandbox Deep Packet Diagnostics.
+     6. Administrator User Management, Role Elevation & Lockout Triage.

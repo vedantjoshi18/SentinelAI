@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: SentinelAI Unified Security & Threat API
+  version: 1.0.0
+  description: >
+    Comprehensive REST API documentation for the SentinelAI platform,
+    combining deterministic rule engine inspection, AI payload classification,
+    behavioral anomaly detection, network IDS, and administrative triage.
+servers:
+  - url: http://localhost:5000/api
+    description: Node.js Express Gateway
+  - url: http://localhost:8000
+    description: Python FastAPI AI Inference Microservice
+
+paths:
+  /health:
+    get:
+      summary: System Health & Microservice Diagnostic Probe
+      responses:
+        '200':
+          description: All subsystems healthy
+
+  /auth/register:
+    post:
+      summary: Register new platform user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                role: { type: string, enum: [USER, ANALYST, ADMIN] }
+      responses:
+        '201':
+          description: User registered, returns JWT token
+
+  /auth/login:
+    post:
+      summary: Authenticate user & issue JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Authentication successful
+        '423':
+          description: Account locked due to repeated failures
+
+  /threats:
+    get:
+      summary: Retrieve paginated security telemetry events
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: threatType
+          in: query
+          schema: { type: string }
+        - name: severity
+          in: query
+          schema: { type: string, enum: [LOW, MEDIUM, HIGH, CRITICAL] }
+        - name: action
+          in: query
+          schema: { type: string, enum: [ALLOW, MONITOR, BLOCK] }
+      responses:
+        '200':
+          description: Security event list with pagination metadata
+
+  /threats/stats:
+    get:
+      summary: Aggregated SOC overview metrics & distributions
+      responses:
+        '200':
+          description: Aggregated telemetry, counts, and category breakdowns
+
+  /threats/inspect:
+    post:
+      summary: Live threat sandbox deep packet diagnostic inspection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [payload]
+              properties:
+                payload: { type: string }
+                requestFrequency: { type: integer, default: 1 }
+                anomalyScore: { type: number, default: 0.0 }
+      responses:
+        '200':
+          description: Multi-engine security assessment without blocking
+
+  /admin/users:
+    get:
+      summary: List all registered platform users (Admin only)
+      responses:
+        '200':
+          description: List of users with roles and lockout statuses
+
+  /admin/users/{id}/role:
+    patch:
+      summary: Update user RBAC role (Admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [USER, ANALYST, ADMIN] }
+      responses:
+        '200':
+          description: User role updated
+
+  /predict:
+    post:
+      summary: L7 Application attack payload classification (FastAPI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+      responses:
+        '200':
+          description: Predicted threat type, confidence, and class probabilities
+
+  /anomaly:
+    post:
+      summary: Behavioral anomaly detection via Isolation Forest (FastAPI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [request_frequency, burst_frequency, failed_auth_count, error_4xx_rate, path_entropy, avg_interval_ms]
+      responses:
+        '200':
+          description: Anomaly score, binary prediction, and severity
+
+  /network/flow:
+    post:
+      summary: L3/L4 Network flow intrusion detection (CIC-IDS2017)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [flow_duration_ms, total_fwd_packets, total_bwd_packets, flow_bytes_per_sec, flow_packets_per_sec]
+      responses:
+        '200':
+          description: Flow classification (BENIGN, DOS_SYN_FLOOD, PORT_SCAN, BRUTE_FORCE)

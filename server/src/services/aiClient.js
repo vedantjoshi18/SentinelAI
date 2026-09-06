@@ -123,6 +123,33 @@ class AiClient {
   }
 
   /**
+   * Classifies Layer 3/4 network flow telemetry (CIC-IDS2017).
+   */
+  async classifyNetworkFlow(flowData) {
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/network/flow`,
+        flowData,
+        {
+          timeout: this.timeout,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+      return response.data;
+    } catch (err) {
+      return {
+        success: false,
+        prediction: 'BENIGN',
+        threat_level: 'LOW',
+        is_intrusion: false,
+        confidence: 0.0,
+        flow_indicators: ['AI_OFFLINE_FALLBACK'],
+        error: err.message,
+      };
+    }
+  }
+
+  /**
    * Health probe for the AI microservice.
    *
    * @returns {Promise<object>} Microservice health status.
@@ -140,6 +167,8 @@ class AiClient {
         modelVersion: response.data?.modelVersion || 'unknown',
         anomalyModelLoaded: Boolean(response.data?.anomalyModelLoaded),
         anomalyModelVersion: response.data?.anomalyModelVersion || 'unknown',
+        networkIdsLoaded: Boolean(response.data?.networkIdsLoaded),
+        networkIdsVersion: response.data?.networkIdsVersion || 'unknown',
       };
     } catch (err) {
       return {
@@ -147,6 +176,7 @@ class AiClient {
         status: 'unreachable',
         modelLoaded: false,
         anomalyModelLoaded: false,
+        networkIdsLoaded: false,
         error: err.code || err.message,
       };
     }
