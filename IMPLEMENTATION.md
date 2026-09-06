@@ -13,7 +13,7 @@
 | **Phase 0** | **Project Foundation & Monorepo Setup** | **COMPLETED** | **PASSED** | React (Vite) + Express + FastAPI initialized, health checks live, tests passing. |
 | **Phase 1** | **Database + Authentication (MongoDB, JWT, bcrypt, RBAC)** | **COMPLETED** | **PASSED** | User model, roles (USER, ANALYST, ADMIN), bcrypt hashing, JWT, repeated-login lockout, RBAC. |
 | **Phase 2** | **Dataset Inspection & Preparation** | **COMPLETED** | **PASSED** | Inspected 31,067 records across 5 classes, 0 nulls, 0 duplicates, 0 leakage, generated notebook & processed datasets. |
-| **Phase 3** | Application Attack Classifier Training | Planned | Pending | TF-IDF + Logistic Regression / Random Forest, metrics evaluation. |
+| **Phase 3** | **Application Attack Classifier Training** | **COMPLETED** | **PASSED** | Sub-word char TF-IDF + Balanced Logistic Regression, 99.86% accuracy, 97.17% Macro F1, artifacts serialized. |
 | **Phase 4** | FastAPI AI Inference Service | Planned | Pending | `POST /predict` endpoint, Pydantic validation, model versioning. |
 | **Phase 5** | Deterministic Security Rule Engine | Planned | Pending | Modular signature rules for SQLi, XSS, Path Traversal, Cmd Injection. |
 | **Phase 6** | Dynamic Risk Engine | Planned | Pending | Multi-signal normalization to 0–100 risk score and policy mapping. |
@@ -82,3 +82,29 @@
    - Jupyter Notebook `ml/notebooks/01_dataset_exploration.ipynb` documents statistical audits, charts, and viva talking points.
 5. **Architectural Separation**:
    - Clearly documented separation between Layer 7 HTTP application payload detection and Layer 3/4 CIC-IDS2017 network flow statistics.
+
+---
+
+## Phase 3: Application Attack Classifier Details
+
+### Objectives Met:
+1. **Model Selection Benchmark**:
+   - Evaluated Balanced Logistic Regression vs Balanced Random Forest on 10,355 test instances.
+   - Logistic Regression proved far superior: 99.86% accuracy & 97.17% Macro F1 vs 97.72% accuracy & 83.30% Macro F1 for Random Forest.
+   - Random Forest suffered from high false positives on Command Injection (11.2% precision vs 84.4% for Logistic Regression).
+2. **Feature Extraction**:
+   - Sub-word character n-grams (`analyzer="char_wb"`, `ngram_range=(2, 5)`, `max_features=15000`, `sublinear_tf=True`).
+3. **Artifact Serialization**:
+   - `ai-service/app/models/attack_classifier/model.joblib` (601 KB).
+   - `ai-service/app/models/attack_classifier/vectorizer.joblib` (505 KB).
+   - `ml/evaluation/results/classifier_evaluation.json`.
+4. **Evaluation Metrics**:
+   - Accuracy: **99.86%**
+   - Macro Precision: **96.84%**
+   - Macro Recall: **97.53%**
+   - Macro F1-Score: **97.17%**
+   - Weighted F1-Score: **99.86%**
+5. **Live Verification**:
+   - 13 representative test cases covering Normal, SQLi, XSS, Path Traversal, and Command Injection all passed with >94% confidence.
+6. **Documentation & Notebooks**:
+   - Generated `ml/notebooks/02_attack_classifier.ipynb` and `docs/ml-methodology.md`.
