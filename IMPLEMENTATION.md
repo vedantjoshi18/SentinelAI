@@ -14,7 +14,7 @@
 | **Phase 1** | **Database + Authentication (MongoDB, JWT, bcrypt, RBAC)** | **COMPLETED** | **PASSED** | User model, roles (USER, ANALYST, ADMIN), bcrypt hashing, JWT, repeated-login lockout, RBAC. |
 | **Phase 2** | **Dataset Inspection & Preparation** | **COMPLETED** | **PASSED** | Inspected 31,067 records across 5 classes, 0 nulls, 0 duplicates, 0 leakage, generated notebook & processed datasets. |
 | **Phase 3** | **Application Attack Classifier Training** | **COMPLETED** | **PASSED** | Sub-word char TF-IDF + Balanced Logistic Regression, 99.86% accuracy, 97.17% Macro F1, artifacts serialized. |
-| **Phase 4** | FastAPI AI Inference Service | Planned | Pending | `POST /predict` endpoint, Pydantic validation, model versioning. |
+| **Phase 4** | **FastAPI AI Inference Service** | **COMPLETED** | **PASSED** | Startup artifact loading, `POST /predict`, Pydantic validation, structured errors, versioning. |
 | **Phase 5** | Deterministic Security Rule Engine | Planned | Pending | Modular signature rules for SQLi, XSS, Path Traversal, Cmd Injection. |
 | **Phase 6** | Dynamic Risk Engine | Planned | Pending | Multi-signal normalization to 0–100 risk score and policy mapping. |
 | **Phase 7** | Security Middleware Integration | Planned | Pending | Intercept Express requests, call AI + Rules + Risk Engine, ALLOW/MONITOR/BLOCK. |
@@ -108,3 +108,23 @@
    - 13 representative test cases covering Normal, SQLi, XSS, Path Traversal, and Command Injection all passed with >94% confidence.
 6. **Documentation & Notebooks**:
    - Generated `ml/notebooks/02_attack_classifier.ipynb` and `docs/ml-methodology.md`.
+
+---
+
+## Phase 4: FastAPI AI Inference Service Details
+
+### Objectives Met:
+1. **Startup Model Caching**:
+   - `AttackClassifierService` loads `model.joblib` and `vectorizer.joblib` once at application startup using FastAPI's lifespan event.
+   - Ensures sub-millisecond inference with zero disk read or retraining overhead per request.
+2. **Pydantic Validation**:
+   - `PredictionRequest`: Validates non-empty input strings, rejects whitespace-only or missing payload requests with HTTP 422.
+   - `PredictionResponse`: Strongly typed output schema specifying `threatType`, `confidence` (0.0 to 1.0), `modelVersion`, and per-class `probabilities`.
+3. **Endpoint Implementation**:
+   - `POST /predict` and `POST /api/predict`: Returns predicted threat type and calibrated probability score.
+   - Returns 503 if model is uninitialized and 422 on invalid payload structures.
+4. **Health Check**:
+   - `GET /health` returns `status: "ok"`, `modelLoaded: true`, and `modelVersion: "attack-classifier-v1"`.
+5. **Testing & Live Verification**:
+   - 13 comprehensive pytest test cases passing in `ai-service/tests/test_predict.py` and `ai-service/tests/test_health.py`.
+   - Verified live with `uvicorn` and `Invoke-RestMethod` across Normal, SQLi, XSS, Path Traversal, and Command Injection inputs.

@@ -76,3 +76,36 @@
 - **Responses**:
   - `200 OK`: Access granted.
   - `403 Forbidden`: Insufficient role permissions.
+
+---
+
+## AI Inference Service Endpoints (Phase 4)
+
+### 7. Attack Payload Classification
+- **Endpoint**: `POST /predict` (also available via `POST /api/predict`)
+- **Service**: AI Microservice (FastAPI, Port 8000)
+- **Auth**: None (Internal microservice / Gateway authenticated)
+- **Request Body**:
+```json
+{
+  "text": "1' OR '1'='1"
+}
+```
+- **Responses**:
+  - `200 OK`:
+```json
+{
+  "threatType": "SQL_INJECTION",
+  "confidence": 0.9991,
+  "modelVersion": "attack-classifier-v1",
+  "probabilities": {
+    "COMMAND_INJECTION": 0.0003,
+    "NORMAL": 0.0003,
+    "PATH_TRAVERSAL": 0.0001,
+    "SQL_INJECTION": 0.9991,
+    "XSS": 0.0002
+  }
+}
+```
+  - `422 Unprocessable Entity`: Request validation failed (empty string, missing field, whitespace only).
+  - `503 Service Unavailable`: Classifier model artifacts unavailable or initializing.
