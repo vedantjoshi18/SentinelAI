@@ -2,6 +2,7 @@ const { aiClient: defaultAiClient } = require('../services/aiClient');
 const threatService = require('../services/threatService');
 const riskEngine = require('../services/riskEngine');
 const { recordAndGetFrequency } = require('./rateLimiter');
+const { behaviourService: defaultBehaviourService } = require('../services/behaviourService');
 
 const { logSecurityEvent: defaultEventLogger } = require('../services/eventLogger');
 
@@ -23,6 +24,7 @@ function createSecurityMiddleware(options = {}) {
   const ai = options.aiClient || defaultAiClient;
   const threat = options.threatService || threatService;
   const risk = options.riskEngine || riskEngine;
+  const behaviour = options.behaviourService || defaultBehaviourService;
   const exemptPaths = options.exemptPaths || DEFAULT_EXEMPT_PATHS;
   const onSecurityEvent = options.onSecurityEvent !== undefined
     ? options.onSecurityEvent
@@ -70,17 +72,59 @@ function createSecurityMiddleware(options = {}) {
         };
       }
 
-      // 5. Gather request context telemetry
+      // 5. Gather request context telemetry & behavioral analysis
       const clientIp =
         req.ip ||
         req.headers['x-forwarded-for'] ||
         req.socket?.remoteAddress ||
         '127.0.0.1';
 
-      const requestFrequency = recordAndGetFrequency(clientIp);
-      const failedAuthAttempts = req.user?.failedLoginAttempts || 0;
-      const historicalViolations = 0; // Populated via user/IP history in future phases
-      const anomalyScore = 0.0; // Populated by Behavioral Anomaly Detector in Phase 10
+      const entityId = req.user?._id ? req.user._id.toString() : clientIp;
+      const entityType = req.user?._id ? 'USER' : 'IP';
+
+      // Record request in behaviour service & calculate real-time sliding window features
+      const telemetry = behaviour.recordRequest(entityId, {
+        path: currentPath,
+        method: req.method,
+        entityType,
+        userId: req.user?._id || null,
+        ip: clientIp,
+      });
+
+      // Hook response finish to capture 4xx client errors for directory fuzzing / scanner detection
+      res.on('finish', () => {
+        if (res.statusCode >= 400 && res.statusCode < 500) {
+          behaviour.recordError4xx(entityId);
+        }
+      });
+
+      // Update rate limiter velocity counter
+      recordAndGetFrequency(clientIp);
+
+      const isLoginEndpoint = currentPath === '/api/auth/login';
+      const failedAuthAttempts = isLoginEndpoint
+        ? 0
+        : Math.max(
+            req.user?.failedLoginAttempts || 0,
+            telemetry.failed_auth_count || 0
+          );
+      const historicalViolations = behaviour.getHistoricalViolations(entityId);
+
+      // Evaluate behavioural anomaly detection via AI microservice (if available)
+      let anomalyResult = {
+        is_anomaly: false,
+        anomaly_score: 0.0,
+        raw_score: 0.0,
+        anomaly_level: 'NORMAL',
+        modelVersion: 'none',
+        available: false,
+      };
+
+      if (typeof ai.detectAnomaly === 'function') {
+        anomalyResult = await ai.detectAnomaly(telemetry);
+      }
+
+      const anomalyScore = anomalyResult.anomaly_score || 0.0;
 
       // 6. Calculate Dynamic Risk Score and Enforcement Action
       const riskResult = risk.calculateRisk({
@@ -88,7 +132,8 @@ function createSecurityMiddleware(options = {}) {
         aiConfidence: aiResult.confidence,
         ruleSeverity: ruleResult.ruleSeverity,
         anomalyScore,
-        requestFrequency,
+        anomalyLevel: anomalyResult.anomaly_level,
+        requestFrequency: telemetry.request_frequency,
         failedAuthAttempts,
         historicalViolations,
       });
@@ -99,6 +144,8 @@ function createSecurityMiddleware(options = {}) {
         primaryThreatType = ruleResult.ruleCategory;
       } else if (aiResult.threatType && aiResult.threatType !== 'NORMAL') {
         primaryThreatType = aiResult.threatType;
+      } else if (anomalyResult.is_anomaly || anomalyScore >= 0.70 || anomalyResult.anomaly_level === 'CRITICAL') {
+        primaryThreatType = 'BEHAVIORAL_ANOMALY';
       }
 
       // 8. Attach full security context to request for downstream audit logging and handlers
@@ -117,10 +164,24 @@ function createSecurityMiddleware(options = {}) {
           available: aiResult.available,
           modelVersion: aiResult.modelVersion,
         },
+        anomalyDetection: {
+          isAnomaly: anomalyResult.is_anomaly,
+          anomalyScore: anomalyResult.anomaly_score,
+          rawScore: anomalyResult.raw_score,
+          anomalyLevel: anomalyResult.anomaly_level,
+          modelVersion: anomalyResult.modelVersion,
+          available: anomalyResult.available,
+        },
         telemetry: {
           clientIp,
-          requestFrequency,
+          entityId,
+          entityType,
+          requestFrequency: telemetry.request_frequency,
+          burstFrequency: telemetry.burst_frequency,
           failedAuthAttempts,
+          error4xxRate: telemetry.error_4xx_rate,
+          pathEntropy: telemetry.path_entropy,
+          avgIntervalMs: telemetry.avg_interval_ms,
           anomalyScore,
         },
         timestamp: new Date().toISOString(),
@@ -128,7 +189,14 @@ function createSecurityMiddleware(options = {}) {
         path: originalUrl || currentPath,
       };
 
-      // 9. Dispatch event hook for audit logging (non-blocking)
+      // 9. Update behaviour tracking state and asynchronous DB persistence
+      if (riskResult.action === 'BLOCK') {
+        behaviour.recordViolation(entityId, entityType);
+      }
+      behaviour.updateAnomalyResult(entityId, anomalyResult);
+      Promise.resolve(behaviour.persistToDb(entityId, entityType, telemetry, anomalyResult)).catch(() => {});
+
+      // 10. Dispatch event hook for audit logging (non-blocking)
       if (typeof onSecurityEvent === 'function') {
         try {
           Promise.resolve(onSecurityEvent(req.securityContext, req)).catch(() => {});
@@ -137,7 +205,7 @@ function createSecurityMiddleware(options = {}) {
         }
       }
 
-      // 10. Automated Policy Enforcement
+      // 11. Automated Policy Enforcement
       if (riskResult.action === 'BLOCK') {
         return res.status(403).json({
           success: false,

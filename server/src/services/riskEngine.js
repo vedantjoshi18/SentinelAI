@@ -199,6 +199,11 @@ function calculateRisk(signals = {}, customConfig = {}) {
     factors.push('ACCOUNT_LOCKOUT_BURST_FLOOR');
   }
 
+  if (norm.anomalyScore100 >= 85) {
+    finalScore = Math.max(finalScore, 80);
+    factors.push('CRITICAL_BEHAVIORAL_ANOMALY_FLOOR');
+  }
+
   // Ensure strict bounding between 0 and 100 as an integer
   const boundedScore = Math.min(100, Math.max(0, Math.round(finalScore)));
 

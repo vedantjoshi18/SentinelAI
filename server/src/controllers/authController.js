@@ -1,5 +1,6 @@
-﻿const User = require('../models/User');
+const User = require('../models/User');
 const { generateToken } = require('../utils/token');
+const { behaviourService } = require('../services/behaviourService');
 
 const register = async (req, res, next) => {
   try {
@@ -39,9 +40,15 @@ const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
+    const clientIp =
+      req.ip ||
+      req.headers?.['x-forwarded-for'] ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1';
 
     const user = await User.findOne({ email: normalizedEmail }).select('+passwordHash');
     if (!user) {
+      behaviourService.recordAuthFailure(clientIp);
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
@@ -49,6 +56,8 @@ const login = async (req, res, next) => {
     }
 
     if (user.isLocked()) {
+      behaviourService.recordAuthFailure(clientIp);
+      behaviourService.recordAuthFailure(user._id.toString(), 'USER');
       const remainingMinutes = Math.max(
         1,
         Math.ceil((user.lockedUntil.getTime() - Date.now()) / (60 * 1000))
@@ -62,6 +71,8 @@ const login = async (req, res, next) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       await user.incrementFailedAttempts();
+      behaviourService.recordAuthFailure(clientIp);
+      behaviourService.recordAuthFailure(user._id.toString(), 'USER');
       const remainingAttempts = Math.max(0, 5 - user.failedLoginAttempts);
       return res.status(401).json({
         success: false,
@@ -71,6 +82,8 @@ const login = async (req, res, next) => {
     }
 
     await user.resetLoginAttempts();
+    behaviourService.recordAuthSuccess(clientIp);
+    behaviourService.recordAuthSuccess(user._id.toString());
     const token = generateToken({ id: user._id, role: user.role });
 
     return res.status(200).json({

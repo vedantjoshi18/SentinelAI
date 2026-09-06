@@ -67,6 +67,62 @@ class AiClient {
   }
 
   /**
+   * Evaluates behavioral telemetry using the Anomaly Detector AI model.
+   *
+   * @param {object} features - 6-dimensional behavioral telemetry.
+   * @returns {Promise<object>} Standardized anomaly detection response.
+   */
+  async detectAnomaly(features = {}) {
+    const payload = {
+      request_frequency: Math.max(0.0, Number(features.request_frequency) || 0.0),
+      burst_frequency: Math.max(0.0, Number(features.burst_frequency) || 0.0),
+      failed_auth_count: Math.max(0, parseInt(features.failed_auth_count, 10) || 0),
+      error_4xx_rate: Math.min(1.0, Math.max(0.0, Number(features.error_4xx_rate) || 0.0)),
+      path_entropy: Math.max(0.0, Number(features.path_entropy) || 1.0),
+      avg_interval_ms: Math.max(0.0, Number(features.avg_interval_ms) || 5000.0),
+    };
+
+    try {
+      const response = await axios.post(
+        `${this.baseUrl}/anomaly`,
+        payload,
+        {
+          timeout: this.timeout,
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      const data = response.data || {};
+      return {
+        is_anomaly: Boolean(data.is_anomaly),
+        anomaly_score: typeof data.anomaly_score === 'number' ? data.anomaly_score : 0.0,
+        raw_score: typeof data.raw_score === 'number' ? data.raw_score : 0.0,
+        anomaly_level: data.anomaly_level || (data.is_anomaly ? 'SUSPICIOUS' : 'NORMAL'),
+        modelVersion: data.modelVersion || 'behaviour-model-v1',
+        features: data.features || payload,
+        available: true,
+      };
+    } catch (err) {
+      const isConnectionError =
+        err.code === 'ECONNREFUSED' ||
+        err.code === 'ENOTFOUND' ||
+        err.code === 'ETIMEDOUT' ||
+        err.code === 'ECONNABORTED';
+
+      return {
+        is_anomaly: false,
+        anomaly_score: 0.0,
+        raw_score: 0.0,
+        anomaly_level: 'NORMAL',
+        modelVersion: 'fallback',
+        features: payload,
+        available: false,
+        error: isConnectionError ? `AI anomaly service offline (${err.code || 'timeout'})` : err.message,
+      };
+    }
+  }
+
+  /**
    * Health probe for the AI microservice.
    *
    * @returns {Promise<object>} Microservice health status.
@@ -82,12 +138,15 @@ class AiClient {
         status: response.data?.status || 'ok',
         modelLoaded: Boolean(response.data?.modelLoaded),
         modelVersion: response.data?.modelVersion || 'unknown',
+        anomalyModelLoaded: Boolean(response.data?.anomalyModelLoaded),
+        anomalyModelVersion: response.data?.anomalyModelVersion || 'unknown',
       };
     } catch (err) {
       return {
         available: false,
         status: 'unreachable',
         modelLoaded: false,
+        anomalyModelLoaded: false,
         error: err.code || err.message,
       };
     }

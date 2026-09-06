@@ -34,6 +34,7 @@ const securityEventSchema = new mongoose.Schema(
         'XSS',
         'PATH_TRAVERSAL',
         'COMMAND_INJECTION',
+        'BEHAVIORAL_ANOMALY',
         'MULTIPLE',
         'UNKNOWN',
       ],
@@ -91,8 +92,14 @@ const securityEventSchema = new mongoose.Schema(
     },
     telemetry: {
       clientIp: String,
+      entityId: String,
+      entityType: String,
       requestFrequency: Number,
+      burstFrequency: Number,
       failedAuthAttempts: Number,
+      error4xxRate: Number,
+      pathEntropy: Number,
+      avgIntervalMs: Number,
       anomalyScore: Number,
     },
     userAgent: {

@@ -20,7 +20,7 @@
 | **Phase 7** | **Security Middleware Integration** | **COMPLETED** | **PASSED** | Request interceptor, deep inspection (Rules + AI + Risk Engine), rate limiting, automated 403 blocking. |
 | **Phase 8** | **Security Event Logging & Audit APIs** | **COMPLETED** | **PASSED** | MongoDB SecurityEvent schema, non-blocking logger, RBAC-protected SOC audit & metrics APIs. |
 | **Phase 9** | **Behavioural Anomaly Detection** | **COMPLETED** | **PASSED** | Isolation Forest vs One-Class SVM benchmark (99.92% ROC-AUC, 100% precision), FastAPI `POST /anomaly`. |
-| **Phase 10** | Behaviour Integration | Planned | Pending | UserBehaviour tracking feeding anomaly scores to the Risk Engine. |
+| **Phase 10** | **Behaviour Integration** | **COMPLETED** | **PASSED** | Real-time sliding window telemetry, Anomaly Detector AI integration, UserBehaviour persistence, 105 tests passing. |
 | **Phase 11** | React Security SOC Dashboard | Planned | Pending | Dark SOC theme, Recharts visualizations, live DB stats, manual analysis sandbox. |
 | **Phase 12** | Admin & User Management | Planned | Pending | Server-side enforced RBAC controls and user administration. |
 | **Phase 13** | Security Hardening & Defenses | Planned | Pending | Helmet, CORS, input sanitization, rate limits, secret hygiene. |
@@ -273,3 +273,43 @@
    - Total AI service test count: **22/22 pytest tests passing**.
    - Total Server test count: **87/87 tests passing**.
    - Jupyter Notebook `ml/notebooks/03_anomaly_detector.ipynb` documenting benchmarking results, charts, and methodology.
+
+---
+
+## Phase 10: Behaviour Integration Details
+
+### Objectives Met:
+1. **AI Anomaly Client Integration (`server/src/services/aiClient.js`)**:
+   - Implemented `detectAnomaly(features)` method communicating with FastAPI `POST /anomaly`.
+   - Feature boundary enforcement: ensures strictly valid non-negative values (`request_frequency`, `burst_frequency`, `failed_auth_count`, `path_entropy`, `avg_interval_ms`) and normalized `error_4xx_rate` $\in [0.0, 1.0]$.
+   - Resilient fallback mechanism: handles connection failures, timeouts, and network drops gracefully with offline fallback payload without interrupting the Express pipeline.
+   - Updated `checkHealth()` to report `anomalyModelLoaded` and `anomalyModelVersion`.
+2. **UserBehaviour Data Model (`server/src/models/UserBehaviour.js`)**:
+   - Comprehensive Mongoose schema persisting behavioral profiles for users and client IPs.
+   - Tracks `entityId`, `entityType` (`IP` or `USER`), `userId`, `ip`, `windowStart`, `requestCount`, `burstCount`, `failedAuthCount`, `error4xxCount`, `totalRequests`, `distinctPaths`, `lastAnomalyScore`, `lastAnomalyLevel`, `isAnomaly`, `historicalViolations`, `lastActive`, and serialized `telemetryFeatures`.
+   - Compound unique index on `{ entityId: 1, entityType: 1 }` for sub-millisecond query performance and `{ lastActive: -1 }`.
+3. **High-Throughput Sliding-Window Engine (`server/src/services/behaviourService.js`)**:
+   - In-memory sliding window manager maintaining active telemetry with zero database read overhead per request:
+     - Primary 60-second sliding window (`WINDOW_MS = 60_000`) for velocity calculation (`request_frequency`).
+     - 10-second peak burst window (`BURST_MS = 10_000`) for burst spike tracking (`burst_frequency`).
+     - Endpoint exploration diversity tracking (`path_entropy`).
+     - Proportionate HTTP 4xx client response tracking (`error_4xx_rate`).
+     - Microsecond inter-request arrival interval analysis (`avg_interval_ms`).
+   - Non-blocking asynchronous DB persistence bridge (`persistToDb()`) upserting state to `UserBehaviour`.
+4. **Dynamic Risk Engine Anomaly Floor Override (`server/src/services/riskEngine.js`)**:
+   - Added `CRITICAL_BEHAVIORAL_ANOMALY_FLOOR`: forces risk score $\ge 80$ and enforcement action `BLOCK` whenever the AI Anomaly Detector reports an anomaly score $\ge 0.85$ (or `anomalyLevel === 'CRITICAL'`).
+   - Guarantees that severe volumetric attacks, directory fuzzing crawlers, or brute-force credential stuffing are strictly blocked even if request payloads lack explicit SQL/XSS regex tokens.
+5. **Gateway Security Middleware Integration (`server/src/middleware/securityMiddleware.js`)**:
+   - Automated entity resolution (`req.user?._id` vs `clientIp`).
+   - Real-time sliding window recording and telemetry extraction on every inbound request.
+   - Response listener hook (`res.on('finish')`) observing 4xx client errors to dynamically increase error rates for directory fuzzers and scanner bots.
+   - Seamless handoff to `aiClient.detectAnomaly(telemetry)`.
+   - Threat categorization: flags incidents as `BEHAVIORAL_ANOMALY` when anomaly detection triggers.
+   - Enriched `req.securityContext.anomalyDetection` and telemetry parameters dispatched to non-blocking audit logging.
+6. **Authentication Controller & Audit Sync**:
+   - `server/src/controllers/authController.js` updates `behaviourService` on failed and successful authentication events.
+   - `server/src/models/SecurityEvent.js` expanded `threatType` enum with `'BEHAVIORAL_ANOMALY'` and added full telemetry breakdown.
+7. **Verification & Testing**:
+   - 18 dedicated test cases in `server/tests/behaviourIntegration.test.js` verifying schema persistence, sliding window mechanics, expired request pruning, 4xx rates, entropy, inter-arrival timing, AI client sanitization, offline fallback, health probe, risk floors, and end-to-end gateway blocking.
+   - Total Server test count: **105/105 tests passing** across 40 test suites.
+   - Total AI service test count: **22/22 pytest tests passing**.
