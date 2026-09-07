@@ -1,4 +1,4 @@
-﻿const mongoose = require('mongoose');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
@@ -92,10 +92,11 @@ userSchema.methods.incrementFailedAttempts = async function () {
 userSchema.methods.resetLoginAttempts = async function () {
   if (this.failedLoginAttempts > 0 || this.lockedUntil !== null) {
     this.failedLoginAttempts = 0;
-    this.lockedUntil = null;
-    if (this.status === 'locked') {
+    // Only revert status to active if lockout was due to automated temporary lockedUntil
+    if (this.status === 'locked' && this.lockedUntil !== null) {
       this.status = 'active';
     }
+    this.lockedUntil = null;
     return this.save();
   }
   return this;

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require('../models/User');
 
 /**
@@ -93,6 +94,13 @@ async function getAdminStats(req, res) {
 // GET /api/admin/users/:id
 async function getUserById(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user identifier format',
+      });
+    }
+
     const user = await User.findById(req.params.id).select('-passwordHash');
     if (!user) {
       return res.status(404).json({
@@ -116,6 +124,13 @@ async function getUserById(req, res) {
 // PATCH /api/admin/users/:id/role
 async function updateUserRole(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user identifier format',
+      });
+    }
+
     const { role } = req.body;
     const validRoles = ['USER', 'ANALYST', 'ADMIN'];
     if (!role || !validRoles.includes(role)) {
@@ -167,6 +182,13 @@ async function updateUserRole(req, res) {
 // PATCH /api/admin/users/:id/status
 async function updateUserStatus(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user identifier format',
+      });
+    }
+
     const { status } = req.body;
     const validStatuses = ['active', 'suspended', 'locked'];
     if (!status || !validStatuses.includes(status)) {
@@ -222,6 +244,13 @@ async function updateUserStatus(req, res) {
 // POST /api/admin/users/:id/unlock
 async function unlockUser(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user identifier format',
+      });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({
@@ -259,6 +288,13 @@ async function unlockUser(req, res) {
 // DELETE /api/admin/users/:id
 async function deleteUser(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid user identifier format',
+      });
+    }
+
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({

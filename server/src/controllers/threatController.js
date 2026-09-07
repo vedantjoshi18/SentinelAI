@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const threatService = require('../services/threatService');
 const { aiClient } = require('../services/aiClient');
 const riskEngine = require('../services/riskEngine');
@@ -125,7 +126,14 @@ async function getThreatEvents(req, res) {
       }
     }
 
-    const sortField = req.query.sortBy || 'timestamp';
+    if (req.query.search) {
+      const q = req.query.search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(q, 'i');
+      filter.$or = [{ ip: regex }, { path: regex }];
+    }
+
+    const ALLOWED_SORTS = ['timestamp', 'riskScore', 'severity', 'threatType'];
+    const sortField = ALLOWED_SORTS.includes(req.query.sortBy) ? req.query.sortBy : 'timestamp';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
     const sort = { [sortField]: sortOrder };
 
@@ -164,13 +172,18 @@ async function getThreatEvents(req, res) {
  */
 async function getThreatStats(req, res) {
   try {
-    const [totalEvents, blockedCount, monitoredCount, allowedCount, allEvents] =
+    const [totalEvents, blockedCount, monitoredCount, allowedCount, eventSummaries, recentThreats] =
       await Promise.all([
         SecurityEvent.countDocuments({}),
         SecurityEvent.countDocuments({ action: 'BLOCK' }),
         SecurityEvent.countDocuments({ action: 'MONITOR' }),
         SecurityEvent.countDocuments({ action: 'ALLOW' }),
-        SecurityEvent.find({}).sort({ timestamp: -1 }),
+        SecurityEvent.find({}).select('threatType severity riskScore'),
+        SecurityEvent.find({
+          $or: [{ action: 'BLOCK' }, { severity: { $in: ['HIGH', 'CRITICAL'] } }],
+        })
+          .sort({ timestamp: -1 })
+          .limit(5),
       ]);
 
     // Build threat type distribution
@@ -180,6 +193,7 @@ async function getThreatStats(req, res) {
       XSS: 0,
       PATH_TRAVERSAL: 0,
       COMMAND_INJECTION: 0,
+      BEHAVIORAL_ANOMALY: 0,
       MULTIPLE: 0,
     };
 
@@ -191,9 +205,9 @@ async function getThreatStats(req, res) {
       CRITICAL: 0,
     };
 
-    const recentThreats = [];
+    let totalRiskScore = 0;
 
-    for (const ev of allEvents) {
+    for (const ev of eventSummaries) {
       if (ev.threatType && byThreatType[ev.threatType] !== undefined) {
         byThreatType[ev.threatType] = (byThreatType[ev.threatType] || 0) + 1;
       } else if (ev.threatType) {
@@ -204,14 +218,13 @@ async function getThreatStats(req, res) {
         bySeverity[ev.severity] = (bySeverity[ev.severity] || 0) + 1;
       }
 
-      // Collect recent active threats for quick dashboard triage
-      if (
-        (ev.action === 'BLOCK' || ev.severity === 'HIGH' || ev.severity === 'CRITICAL') &&
-        recentThreats.length < 5
-      ) {
-        recentThreats.push(ev);
-      }
+      totalRiskScore += (typeof ev.riskScore === 'number' ? ev.riskScore : 0);
     }
+
+    const avgRiskScore =
+      eventSummaries.length > 0
+        ? Math.round(totalRiskScore / eventSummaries.length)
+        : 0;
 
     return res.status(200).json({
       success: true,
@@ -220,6 +233,7 @@ async function getThreatStats(req, res) {
         blockedCount,
         monitoredCount,
         allowedCount,
+        avgRiskScore,
         byThreatType,
         bySeverity,
         recentThreats,
@@ -240,6 +254,13 @@ async function getThreatStats(req, res) {
  */
 async function getThreatById(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Security event not found',
+      });
+    }
+
     const event = await SecurityEvent.findById(req.params.id);
     if (!event) {
       return res.status(404).json({
@@ -267,6 +288,13 @@ async function getThreatById(req, res) {
  */
 async function updateThreatStatus(req, res) {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      return res.status(404).json({
+        success: false,
+        error: 'Security event not found',
+      });
+    }
+
     const updates = {};
     if (req.body.resolved !== undefined) {
       updates.resolved = Boolean(req.body.resolved);

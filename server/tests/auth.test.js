@@ -1,9 +1,10 @@
-﻿const { test, describe, before, beforeEach } = require('node:test');
+const { test, describe, before, beforeEach } = require('node:test');
 const assert = require('node:assert');
 const request = require('supertest');
 const jwt = require('jsonwebtoken');
 const app = require('../src/app');
 const env = require('../src/config/env');
+const User = require('../src/models/User');
 const { setupMockDb, clearMockDb } = require('./mockDb');
 
 describe('Phase 1: Database & Authentication Test Suite', () => {
@@ -74,6 +75,21 @@ describe('Phase 1: Database & Authentication Test Suite', () => {
       assert.strictEqual(res.body.success, false);
       assert.ok(Array.isArray(res.body.details));
       assert.ok(res.body.details.length >= 2);
+    });
+
+    test('should ignore role parameter on self-registration and enforce USER role (BUG-SEC-001)', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Attacker Attempting Escalation',
+          email: 'attacker@sentinel.ai',
+          password: 'AttackerPassword123!',
+          role: 'ADMIN',
+        });
+
+      assert.strictEqual(res.status, 201);
+      assert.strictEqual(res.body.success, true);
+      assert.strictEqual(res.body.user.role, 'USER');
     });
   });
 
@@ -227,31 +243,36 @@ describe('Phase 1: Database & Authentication Test Suite', () => {
           name: 'Regular User',
           email: 'user@sentinel.ai',
           password: 'UserPass123!@#',
-          role: 'USER',
         });
       userToken = userRes.body.token;
 
-      // Register ANALYST
-      const analystRes = await request(app)
-        .post('/api/auth/register')
-        .send({
-          name: 'Sec Analyst',
-          email: 'analyst@sentinel.ai',
-          password: 'AnalystPass123!@#',
-          role: 'ANALYST',
-        });
-      analystToken = analystRes.body.token;
+      // Provision ANALYST
+      const analystUser = await User.create({
+        name: 'Sec Analyst',
+        email: 'analyst@sentinel.ai',
+        passwordHash: 'hash123',
+        role: 'ANALYST',
+        status: 'active',
+      });
+      analystToken = jwt.sign(
+        { id: analystUser._id.toString(), email: analystUser.email, role: 'ANALYST' },
+        env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
 
-      // Register ADMIN
-      const adminRes = await request(app)
-        .post('/api/auth/register')
-        .send({
-          name: 'Sys Admin',
-          email: 'admin@sentinel.ai',
-          password: 'AdminPass123!@#',
-          role: 'ADMIN',
-        });
-      adminToken = adminRes.body.token;
+      // Provision ADMIN
+      const adminUser = await User.create({
+        name: 'Sys Admin',
+        email: 'admin@sentinel.ai',
+        passwordHash: 'hash123',
+        role: 'ADMIN',
+        status: 'active',
+      });
+      adminToken = jwt.sign(
+        { id: adminUser._id.toString(), email: adminUser.email, role: 'ADMIN' },
+        env.JWT_SECRET,
+        { expiresIn: '1h' }
+      );
     });
 
     test('USER should be rejected with 403 Forbidden when accessing ADMIN endpoint', async () => {

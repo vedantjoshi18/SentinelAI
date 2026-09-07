@@ -9,7 +9,6 @@ export default function AuthModal({ isOpen, onClose }) {
     name: '',
     email: '',
     password: '',
-    role: 'ANALYST',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +24,7 @@ export default function AuthModal({ isOpen, onClose }) {
       if (mode === 'login') {
         await login(formData.email, formData.password);
       } else {
-        await register(formData.name, formData.email, formData.password, formData.role);
+        await register(formData.name, formData.email, formData.password);
       }
       onClose();
     } catch (err) {
@@ -152,23 +151,6 @@ export default function AuthModal({ isOpen, onClose }) {
               />
             </div>
           </div>
-
-          {mode === 'register' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">
-                Assigned Role
-              </label>
-              <select
-                value={formData.role}
-                onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                className="w-full bg-slate-900/80 border border-slate-700/60 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-blue-500 transition"
-              >
-                <option value="ANALYST">ANALYST (Audit & Triage Access)</option>
-                <option value="ADMIN">ADMIN (Full Security Admin)</option>
-                <option value="USER">USER (Standard User)</option>
-              </select>
-            </div>
-          )}
 
           <button
             type="submit"

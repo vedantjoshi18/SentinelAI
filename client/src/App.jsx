@@ -97,23 +97,17 @@ function DashboardContent() {
       if (filters.severity) params.severity = filters.severity;
       if (filters.action) params.action = filters.action;
       if (filters.resolved !== '') params.resolved = filters.resolved === 'true';
+      if (filters.search) params.search = filters.search.trim();
 
       const res = await threatsApi.getThreats(params);
       if (res.success) {
-        let events = res.events || [];
-        if (filters.search) {
-          const q = filters.search.toLowerCase().trim();
-          events = events.filter(
-            (e) => e.ip?.toLowerCase().includes(q) || e.path?.toLowerCase().includes(q)
-          );
-        }
-        setThreats(events);
-        setTotalEvents(res.pagination?.totalEvents ?? events.length);
+        setThreats(res.events || []);
+        setTotalEvents(res.pagination?.total ?? res.pagination?.totalEvents ?? (res.events ? res.events.length : 0));
       }
     } catch {
       // Ignore 401
     }
-  }, [isAuthenticated, page, filters]);
+  }, [isAuthenticated, page, limit, filters]);
 
   // Combined refresh
   const handleRefresh = useCallback(async () => {

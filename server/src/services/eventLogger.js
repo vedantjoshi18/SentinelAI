@@ -45,7 +45,7 @@ async function logSecurityEvent(securityContext = {}, req = {}) {
       '127.0.0.1';
 
     const userAgent = req.headers?.['user-agent'] || '';
-    const userId = req.user?._id || req.user?.id || null;
+    const userId = req.user?._id || req.user?.id || telemetry.userId || null;
 
     // Build sanitized payload snippet (extractStrings explicitly excludes passwords and secrets)
     let payloadSnippet = '';

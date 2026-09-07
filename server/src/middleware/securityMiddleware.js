@@ -5,6 +5,7 @@ const { recordAndGetFrequency } = require('./rateLimiter');
 const { behaviourService: defaultBehaviourService } = require('../services/behaviourService');
 
 const { logSecurityEvent: defaultEventLogger } = require('../services/eventLogger');
+const { verifyToken } = require('../utils/token');
 
 const DEFAULT_EXEMPT_PATHS = [
   '/api/health',
@@ -79,15 +80,29 @@ function createSecurityMiddleware(options = {}) {
         req.socket?.remoteAddress ||
         '127.0.0.1';
 
-      const entityId = req.user?._id ? req.user._id.toString() : clientIp;
-      const entityType = req.user?._id ? 'USER' : 'IP';
+      // Pre-extract authenticated user identity if Bearer token is provided
+      let authenticatedUserId = req.user?._id ? req.user._id.toString() : null;
+      if (!authenticatedUserId && req.headers?.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        try {
+          const rawToken = req.headers.authorization.split(' ')[1];
+          const decoded = verifyToken(rawToken);
+          if (decoded && (decoded.id || decoded._id)) {
+            authenticatedUserId = (decoded.id || decoded._id).toString();
+          }
+        } catch (_) {
+          // Non-blocking: unauthenticated / invalid tokens fall back to IP tracking
+        }
+      }
+
+      const entityId = authenticatedUserId || clientIp;
+      const entityType = authenticatedUserId ? 'USER' : 'IP';
 
       // Record request in behaviour service & calculate real-time sliding window features
       const telemetry = behaviour.recordRequest(entityId, {
         path: currentPath,
         method: req.method,
         entityType,
-        userId: req.user?._id || null,
+        userId: authenticatedUserId || req.user?._id || null,
         ip: clientIp,
       });
 

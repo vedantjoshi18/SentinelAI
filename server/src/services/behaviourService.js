@@ -13,12 +13,22 @@ const BURST_MS = 10 * 1000;  // 10 seconds peak burst window
 class BehaviourService {
   constructor() {
     this.store = new Map();
+    // Periodically prune stale tracking entries in non-test environments
+    if (process.env.NODE_ENV !== 'test') {
+      this.cleanupTimer = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+      this.cleanupTimer.unref();
+    }
   }
 
   /**
    * Retrieves or initializes an in-memory tracking record for an entity.
    */
   _getEntity(entityId, entityType = 'IP', meta = {}) {
+    // Evict stale entities if store grows excessively under scanning
+    if (this.store.size > 5000) {
+      this.cleanup(10 * 60 * 1000);
+    }
+
     if (!this.store.has(entityId)) {
       this.store.set(entityId, {
         entityId,

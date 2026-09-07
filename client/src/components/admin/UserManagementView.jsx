@@ -12,6 +12,8 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 export default function UserManagementView() {
@@ -26,14 +28,19 @@ export default function UserManagementView() {
   const [statusFilter, setStatusFilter] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
 
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const limit = 15;
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const params = {};
+      const params = { page, limit };
       if (roleFilter) params.role = roleFilter;
       if (statusFilter) params.status = statusFilter;
-      if (searchTerm) params.search = searchTerm;
+      if (searchTerm) params.search = searchTerm.trim();
 
       const [usersRes, statsRes] = await Promise.all([
         adminApi.getUsers(params),
@@ -42,6 +49,8 @@ export default function UserManagementView() {
 
       if (usersRes.success) {
         setUsers(usersRes.users || []);
+        setTotalUsers(usersRes.pagination?.total ?? (usersRes.users ? usersRes.users.length : 0));
+        setTotalPages(usersRes.pagination?.totalPages ?? 1);
       }
       if (statsRes.success) {
         setStats(statsRes.stats);
@@ -51,7 +60,7 @@ export default function UserManagementView() {
     } finally {
       setLoading(false);
     }
-  }, [roleFilter, statusFilter, searchTerm]);
+  }, [page, limit, roleFilter, statusFilter, searchTerm]);
 
   useEffect(() => {
     fetchUsers();
@@ -188,14 +197,20 @@ export default function UserManagementView() {
               type="text"
               placeholder="Search by user name or email..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
               className="w-full bg-slate-900/80 border border-slate-700/60 rounded-xl pl-9 pr-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition"
             />
           </div>
 
           <select
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={(e) => {
+              setRoleFilter(e.target.value);
+              setPage(1);
+            }}
             className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer"
           >
             <option value="">All Roles</option>
@@ -206,7 +221,10 @@ export default function UserManagementView() {
 
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
             className="bg-slate-900/80 border border-slate-700/60 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition cursor-pointer"
           >
             <option value="">All Statuses</option>
@@ -336,6 +354,32 @@ export default function UserManagementView() {
               )}
             </tbody>
           </table>
+        </div>
+        {/* Pagination Bar */}
+        <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div>
+            Showing {users.length > 0 ? (page - 1) * limit + 1 : 0} to{' '}
+            {Math.min(page * limit, totalUsers)} of {totalUsers} accounts
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="font-mono font-bold text-white px-2">
+              Page {page} of {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-slate-300 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

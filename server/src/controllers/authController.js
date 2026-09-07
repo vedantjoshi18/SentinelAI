@@ -4,7 +4,7 @@ const { behaviourService } = require('../services/behaviourService');
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await User.findOne({ email: normalizedEmail });
@@ -20,7 +20,7 @@ const register = async (req, res, next) => {
       name: name.trim(),
       email: normalizedEmail,
       passwordHash,
-      role: role || 'USER',
+      role: 'USER', // Strictly enforce USER role on public self-registration (prevents mass assignment)
     });
 
     const token = generateToken({ id: user._id, role: user.role });
@@ -52,6 +52,22 @@ const login = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         error: 'Invalid credentials',
+      });
+    }
+
+    if (user.status === 'suspended') {
+      behaviourService.recordAuthFailure(clientIp);
+      return res.status(403).json({
+        success: false,
+        error: 'Account is suspended. Please contact a platform administrator.',
+      });
+    }
+
+    if (user.status === 'locked' && !user.lockedUntil) {
+      behaviourService.recordAuthFailure(clientIp);
+      return res.status(423).json({
+        success: false,
+        error: 'Account has been locked by an administrator. Please contact support.',
       });
     }
 

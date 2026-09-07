@@ -53,8 +53,8 @@ export function AuthProvider({ children }) {
     throw new Error(res.error || 'Authentication failed');
   };
 
-  const register = async (name, email, password, role = 'ANALYST') => {
-    const res = await authApi.register({ name, email, password, role });
+  const register = async (name, email, password) => {
+    const res = await authApi.register({ name, email, password });
     if (res.success && res.token) {
       saveSession(res.token, res.user);
       return res;

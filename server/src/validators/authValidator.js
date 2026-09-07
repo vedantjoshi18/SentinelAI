@@ -1,4 +1,4 @@
-﻿const { body } = require('express-validator');
+const { body } = require('express-validator');
 
 const validateRegister = [
   body('name')
@@ -27,10 +27,6 @@ const validateRegister = [
     .withMessage('Password must contain at least one number')
     .matches(/[\W_]/)
     .withMessage('Password must contain at least one special character'),
-  body('role')
-    .optional()
-    .isIn(['USER', 'ANALYST', 'ADMIN'])
-    .withMessage('Role must be one of: USER, ANALYST, ADMIN'),
 ];
 
 const validateLogin = [

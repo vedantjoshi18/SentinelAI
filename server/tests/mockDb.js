@@ -42,10 +42,10 @@ function createUserDoc(data) {
   };
   doc.resetLoginAttempts = async function () {
     this.failedLoginAttempts = 0;
-    this.lockedUntil = null;
-    if (this.status === 'locked') {
+    if (this.status === 'locked' && this.lockedUntil !== null) {
       this.status = 'active';
     }
+    this.lockedUntil = null;
     return this;
   };
   doc.save = async function () {
@@ -134,9 +134,15 @@ function createUserBehaviourDoc(data) {
 
 function matchesFilter(event, filter = {}) {
   for (const [key, val] of Object.entries(filter)) {
-    if (key === 'timestamp' && typeof val === 'object' && val !== null) {
+    if (key === '$or' && Array.isArray(val)) {
+      if (!val.some((subFilter) => matchesFilter(event, subFilter))) return false;
+    } else if (key === 'severity' && typeof val === 'object' && val !== null && val.$in) {
+      if (!val.$in.includes(event.severity)) return false;
+    } else if (key === 'timestamp' && typeof val === 'object' && val !== null) {
       if (val.$gte && event.timestamp < new Date(val.$gte)) return false;
       if (val.$lte && event.timestamp > new Date(val.$lte)) return false;
+    } else if (val instanceof RegExp) {
+      if (!val.test(event[key] || '')) return false;
     } else if (event[key] !== val) {
       return false;
     }
@@ -270,6 +276,9 @@ function setupMockDb() {
     let sortOrder = -1;
 
     const chainable = {
+      select: function () {
+        return chainable;
+      },
       sort: function (sortObj = {}) {
         const [field, order] = Object.entries(sortObj)[0] || ['timestamp', -1];
         sortField = field;
