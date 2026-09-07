@@ -69,25 +69,36 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('sentinelai_user');
   };
 
+  const [authActionLoading, setAuthActionLoading] = useState(false);
+  const [authNotification, setAuthNotification] = useState('');
+
   const loginAsDemoAnalyst = async () => {
+    setAuthActionLoading(true);
+    setAuthNotification('');
     const email = 'demo.analyst@sentinelai.local';
     const password = 'AnalystPassword123!';
     try {
-      // Try login first
       return await login(email, password);
     } catch (err) {
-      // If user doesn't exist, register
-      return await register('Demo SOC Analyst', email, password, 'ANALYST');
+      const msg = err.response?.data?.error || err.message || 'Demo Analyst login failed';
+      setAuthNotification(msg);
+    } finally {
+      setAuthActionLoading(false);
     }
   };
 
   const loginAsDemoAdmin = async () => {
+    setAuthActionLoading(true);
+    setAuthNotification('');
     const email = 'demo.admin@sentinelai.local';
     const password = 'AdminPassword123!';
     try {
       return await login(email, password);
     } catch (err) {
-      return await register('Demo Super Admin', email, password, 'ADMIN');
+      const msg = err.response?.data?.error || err.message || 'Demo Admin login failed';
+      setAuthNotification(msg);
+    } finally {
+      setAuthActionLoading(false);
     }
   };
 
@@ -102,6 +113,9 @@ export function AuthProvider({ children }) {
         token,
         user,
         loading,
+        authActionLoading,
+        authNotification,
+        setAuthNotification,
         isAuthenticated: Boolean(token),
         isAnalystOrAdmin,
         isAdmin,

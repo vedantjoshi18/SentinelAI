@@ -19,7 +19,14 @@ export default function Topbar({
   isRefreshing,
   onOpenAuthModal,
 }) {
-  const { user, isAuthenticated, logout, loginAsDemoAnalyst, loginAsDemoAdmin } = useAuth();
+  const {
+    user,
+    isAuthenticated,
+    logout,
+    loginAsDemoAnalyst,
+    loginAsDemoAdmin,
+    authActionLoading,
+  } = useAuth();
 
   return (
     <header className="border-b border-slate-800 bg-[#111827]/90 backdrop-blur sticky top-0 z-40 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4">
@@ -139,15 +146,17 @@ export default function Topbar({
           <div className="flex items-center space-x-2">
             <button
               onClick={loginAsDemoAnalyst}
-              className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
+              disabled={authActionLoading}
+              className="px-2.5 py-1.5 bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Demo Analyst</span>
+              <span>{authActionLoading ? 'Authenticating...' : 'Demo Analyst'}</span>
             </button>
             <button
               onClick={loginAsDemoAdmin}
-              className="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1"
+              disabled={authActionLoading}
+              className="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold tracking-wider transition flex items-center space-x-1 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <span>Demo Admin</span>
+              <span>{authActionLoading ? 'Authenticating...' : 'Demo Admin'}</span>
             </button>
             <button
               onClick={onOpenAuthModal}

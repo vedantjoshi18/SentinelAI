@@ -20,7 +20,16 @@ import UserManagementView from './components/admin/UserManagementView';
 import { Sparkles, AlertCircle, ShieldAlert, ShieldCheck, Cpu, Layers } from 'lucide-react';
 
 function DashboardContent() {
-  const { isAuthenticated, isAnalystOrAdmin, isAdmin, loginAsDemoAnalyst, loginAsDemoAdmin } = useAuth();
+  const {
+    isAuthenticated,
+    isAnalystOrAdmin,
+    isAdmin,
+    loginAsDemoAnalyst,
+    loginAsDemoAdmin,
+    authActionLoading,
+    authNotification,
+    setAuthNotification,
+  } = useAuth();
 
   // Navigation state
   const [activeTab, setActiveTab] = useState('overview');
@@ -236,15 +245,17 @@ function DashboardContent() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={loginAsDemoAnalyst}
-                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center space-x-1.5"
+                disabled={authActionLoading}
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-500/20 flex items-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Demo Analyst</span>
+                <span>{authActionLoading ? 'Authenticating...' : 'Demo Analyst'}</span>
               </button>
               <button
                 onClick={loginAsDemoAdmin}
-                className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-cyan-500/20 flex items-center space-x-1.5"
+                disabled={authActionLoading}
+                className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-cyan-500/20 flex items-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>Demo Admin</span>
+                <span>{authActionLoading ? 'Authenticating...' : 'Demo Admin'}</span>
               </button>
               <button
                 onClick={() => setIsAuthModalOpen(true)}
@@ -253,6 +264,22 @@ function DashboardContent() {
                 Sign In
               </button>
             </div>
+          </div>
+        )}
+
+        {/* Global Authentication Error Alert */}
+        {authNotification && (
+          <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-center justify-between text-xs text-rose-300 shadow-lg">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+              <span>{authNotification}</span>
+            </div>
+            <button
+              onClick={() => setAuthNotification('')}
+              className="text-slate-400 hover:text-white text-xs font-mono px-2 py-0.5"
+            >
+              DISMISS
+            </button>
           </div>
         )}
 

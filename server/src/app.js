@@ -52,11 +52,22 @@ const userRoutes = require('./routes/userRoutes');
 const threatRoutes = require('./routes/threatRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiter');
+const { getIsConnected, getIsInMemory } = require('./config/db');
+const { aiClient } = require('./services/aiClient');
 const { securityMiddleware } = require('./middleware/securityMiddleware');
 
 // Health check endpoint (exempt from security inspection)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+app.get('/api/health', async (req, res) => {
+  if (process.env.NODE_ENV === 'test') {
+    return res.status(200).json({ status: 'ok' });
+  }
+
+  const aiHealth = await aiClient.checkHealth();
+  res.status(200).json({
+    status: 'ok',
+    database: getIsInMemory() ? 'in-memory' : (getIsConnected() ? 'connected' : 'disconnected'),
+    aiService: aiHealth,
+  });
 });
 
 // Rate limiting on API routes
